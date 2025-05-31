@@ -1,37 +1,32 @@
 ﻿using NAudio.Midi;
-using System.Collections.Frozen;
+using System;
 using System.Text;
 
 namespace Midi2Nbs;
 
 internal class Program
 {
-  static FrozenDictionary<int, sbyte> MidiInstToNbsInstMap = new Dictionary<int, sbyte>
-  {
-    [ 0] =  0,
-    [ 1] =  0,
-    [ 2] =  1,
-    [ 3] =  2,
-    [ 4] =  3,
-    [ 5] =  4,
-    [ 6] =  5,
-    [ 7] =  6,
-    [ 8] =  7,
-    [ 9] =  8,
-    [10] =  9,
-    [11] = 10,
-    [12] = 11,
-    [13] = 12,
-    [14] = 13,
-    [15] = 14,
-    [16] = 15
-  }.ToFrozenDictionary();
+  const string SongNameEventHeader = "[SONGNAME]";
+  const string SongDescEventHeader = "[SONGDESC]";
+  const string OriginalAuthorEventHeader = "[ORIGINALAUTHOR]";
+  const string SongAuthorEventHeader = "[SONGAUTHOR]";
+  const string SongStartEventText = "[START]";
+  const string LoopEventText = "[LOOP]";
 
   static void Main(string[] args)
   {
-    string midiPath = @"D:\MIDI\nbs\m2n-debug\purple.mid";
+#if DEBUG
+    string midiPath = @"D:\MIDI\nbs\template\proj-template.mid";
+#else
+    if (args.Length != 1)
+    {
+      Console.WriteLine("Usage: Midi2Nbs <filePath>");
+      return;
+    }
+    string midiPath = args[0].Replace("\"", null).Replace("'", null).Trim();
+#endif
+    
     string nbsOutputPath = GetNbsOutputPath(midiPath);
-    string songName = Path.GetFileNameWithoutExtension(midiPath);
 
     MidiFile mf = new(midiPath);
 
@@ -44,6 +39,40 @@ internal class Program
     #region read events, convert to nbsNotes
 
     ChannelState[] channelStates = [.. Enumerable.Repeat<ChannelState>(new(0, 0), 16)];
+
+    string songName = "";
+    string songDesc = "";
+    string songOriginalAuthor = "";
+    string songAuthor = "";    
+
+    if (mf.Events.FirstOrDefault() is IList<MidiEvent> firstTrack)
+    {
+      foreach (var midiEvent in firstTrack)
+      {
+        if (midiEvent is TextEvent textEvent)
+        {
+          if (textEvent.MetaEventType is MetaEventType.TextEvent)
+          {
+            if (textEvent.Text.StartsWith(SongDescEventHeader))
+            {
+              songDesc = textEvent.Text.Replace(SongDescEventHeader, null);
+            }
+            else if (textEvent.Text.StartsWith(OriginalAuthorEventHeader))
+            {
+              songOriginalAuthor = textEvent.Text.Replace(OriginalAuthorEventHeader, null);
+            }
+            else if (textEvent.Text.StartsWith(SongAuthorEventHeader))
+            {
+              songAuthor = textEvent.Text.Replace(SongAuthorEventHeader, null);
+            }
+            else if (textEvent.Text.StartsWith(SongNameEventHeader))
+            {
+              songName = textEvent.Text.Replace(SongNameEventHeader, null);
+            }
+          }
+        }
+      }
+    }
 
     foreach (var track in mf.Events)
     {
@@ -73,27 +102,24 @@ internal class Program
 
         if (midiEvent is TextEvent { MetaEventType: MetaEventType.Marker } meta)
         {
-          if (meta.Text == "[START]")
+          if (meta.Text == SongStartEventText)
           {
             songStartTime = thisTime;
           }
-          else if (meta.Text == "[LOOP]")
+          else if (meta.Text == LoopEventText)
           {
             songLoopTime = thisTime;
           }
         }
-
-        if (midiEvent is ControlChangeEvent { Controller: MidiController.Pan } cc)
+        else if (midiEvent is ControlChangeEvent { Controller: MidiController.Pan } cc)
         {
           channelState.Pan = cc.ControllerValue;
         }
-
-        if (midiEvent is PatchChangeEvent pc)
+        else if (midiEvent is PatchChangeEvent pc)
         {
           channelState.Inst = pc.Patch;
         }
-
-        if (midiEvent is NoteOnEvent noteOn)
+        else if (midiEvent is NoteOnEvent noteOn)
         {
           NbsNote nbsNote = MidiNoteToNbsNote(channelState.Inst, channelState.Pan, noteOn);          
           
@@ -124,9 +150,9 @@ internal class Program
     writer.Write(songLength); // Song length
     writer.Write(layerCount); // Layer count
     writer.WriteNbsFormatString(songName); // Song name
-    writer.WriteNbsFormatString("Zacksony"); // Song author
-    writer.WriteNbsFormatString("Zacksony"); // Song original author
-    writer.WriteNbsFormatString("MIDI created using Domino, converted using Better-Midi2Nbs by Zacksony."); // Song description
+    writer.WriteNbsFormatString(songAuthor); // Song author
+    writer.WriteNbsFormatString(songOriginalAuthor); // Song original author
+    writer.WriteNbsFormatString(songDesc); // Song description
     writer.Write((short)2000); // TPS
     writer.Write((sbyte)0); // Auto-saving (obsolete)
     writer.Write((sbyte)1); // Auto-saving duration (obsolete)
@@ -142,7 +168,7 @@ internal class Program
     {
       writer.Write((sbyte)1); // Loop on/off
       writer.Write((sbyte)0); // Max loop count
-      writer.Write((short)songLoopTime); // Loop start tick
+      writer.Write((short)(songLoopTime - songStartTime)); // Loop start tick
     }
     else
     {
