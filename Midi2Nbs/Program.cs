@@ -38,8 +38,6 @@ internal class Program
 
     #region read events, convert to nbsNotes
 
-    ChannelState[] channelStates = [.. Enumerable.Repeat<ChannelState>(new(), 16)];
-
     string songName = "";
     string songDesc = "";
     string songOriginalAuthor = "";
@@ -76,7 +74,7 @@ internal class Program
 
     foreach (var channel in mf.Events.SelectMany(x => x).GroupBy(x => x.Channel))
     {
-      ChannelState channelState = channelStates[channel.Key - 1];
+      ChannelState channelState = new();
 
       foreach (var midiEvent in channel.Where(x => x.CommandCode is MidiCommandCode.NoteOn 
                                                                  or MidiCommandCode.ControlChange 
