@@ -16,7 +16,7 @@ internal class Program
   static void Main(string[] args)
   {
 #if DEBUG
-    string midiPath = @"D:\MIDI\nbs\template\proj-template.mid";
+    string midiPath = @"D:\MIDI\Black MIDIs\Necrofantasia all hell freezes over.mid";
 #else
     if (args.Length != 1)
     {
@@ -38,7 +38,7 @@ internal class Program
 
     #region read events, convert to nbsNotes
 
-    ChannelState[] channelStates = [.. Enumerable.Repeat<ChannelState>(new(0, 0), 16)];
+    ChannelState[] channelStates = [.. Enumerable.Repeat<ChannelState>(new(), 16)];
 
     string songName = "";
     string songDesc = "";
@@ -253,7 +253,7 @@ internal class Program
 
   readonly record struct NbsNote(sbyte Inst, sbyte Key, sbyte Vel, byte Pan, short Pitch);
 
-  class ChannelState(int inst, int pan)
+  class ChannelState(int inst = 0, int pan = 64)
   {
     public int Inst { get; set; } = inst;
     public int Pan { get; set; } = pan;
