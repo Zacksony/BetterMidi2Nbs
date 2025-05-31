@@ -16,7 +16,7 @@ internal class Program
   static void Main(string[] args)
   {
 #if DEBUG
-    string midiPath = @"D:\MIDI\Black MIDIs\Necrofantasia all hell freezes over.mid";
+    string midiPath = @"D:\MIDI\nbs\black\black.mid";
 #else
     if (args.Length != 1)
     {
@@ -74,16 +74,18 @@ internal class Program
       }
     }
 
-    foreach (var track in mf.Events)
+    foreach (var channel in mf.Events.SelectMany(x => x).GroupBy(x => x.Channel))
     {
-      foreach (var midiEvent in track.Where(x => x.CommandCode is MidiCommandCode.NoteOn 
-                                                               or MidiCommandCode.ControlChange 
-                                                               or MidiCommandCode.PatchChange
-                                                               or MidiCommandCode.MetaEvent)
-                                     .OrderBy(x => x.AbsoluteTime)
-                                     .GroupBy(x => x.AbsoluteTime)
-                                     .Select(x => x.Order(MidiEventComparer.Instance))
-                                     .SelectMany(x => x))
+      ChannelState channelState = channelStates[channel.Key - 1];
+
+      foreach (var midiEvent in channel.Where(x => x.CommandCode is MidiCommandCode.NoteOn 
+                                                                 or MidiCommandCode.ControlChange 
+                                                                 or MidiCommandCode.PatchChange
+                                                                 or MidiCommandCode.MetaEvent)
+                                       .OrderBy(x => x.AbsoluteTime)
+                                       .GroupBy(x => x.AbsoluteTime)
+                                       .Select(x => x.Order(MidiEventComparer.Instance))
+                                       .SelectMany(x => x))
       {
         if (midiEvent is null)
         {
@@ -96,9 +98,7 @@ internal class Program
           continue;
         }
         
-        short thisTime = (short)actualTime;
-
-        ChannelState channelState = channelStates[midiEvent.GetChannelIndex()];
+        short thisTime = (short)actualTime;        
 
         if (midiEvent is TextEvent { MetaEventType: MetaEventType.Marker } meta)
         {
@@ -284,23 +284,18 @@ internal class Program
       {
         if (x.CommandCode is MidiCommandCode.NoteOn && y.CommandCode is not MidiCommandCode.NoteOn)
         {
-          return -1;
+          return 1;
         }
 
         if (x.CommandCode is not MidiCommandCode.NoteOn && y.CommandCode is MidiCommandCode.NoteOn)
         {
-          return 1;
+          return -1;
         }
       }      
 
       return 0;
     }
   }
-}
-
-static class MidiEventExtensions
-{
-  public static int GetChannelIndex(this MidiEvent midiEvent) => midiEvent.Channel - 1;
 }
 
 static class BinaryWriterExtensions
