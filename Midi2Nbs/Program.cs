@@ -172,12 +172,12 @@ internal class Program
     using FileStream fstream = File.Create(nbsOutputPath);
     using BinaryWriter writer = new(fstream);
 
-    short songLength = (short)(nbsNotesByTick.Keys.Max() + 1 - songStartTime);
+    short songLength = (short)(nbsNotesByTick.Keys.Max() + 1);
 
     #region nbs: header
 
     writer.Write((byte[])[0x00, 0x00, 0x05, 0x10]);
-    writer.Write(songLength); // Song length
+    writer.Write((short)(songLength - songStartTime)); // Song length
     long layerCountPos = fstream.Position;
     writer.Write((short)0); // Layer count
     writer.WriteNbsFormatString(songName); // Song name
@@ -212,16 +212,49 @@ internal class Program
 
     #region nbs: note blocks
 
-    const int SplitPeriod = 32;
+    List<short> groupedTickCounts = [];
+    {
+      short lastMeaAlignedTick = 0;
+      short currentTicksPerMea = 4 * NbsTicksPerQuarterNote;
+      foreach (var (tick, timeSignature) in timeSignatureEvents)
+      {
+        short lastMeaCount = (short)double.Floor((double)(tick - lastMeaAlignedTick) / currentTicksPerMea);
+        lastMeaAlignedTick = (short)(lastMeaAlignedTick + lastMeaCount * currentTicksPerMea);
+        groupedTickCounts.AddRange(Enumerable.Repeat(currentTicksPerMea, lastMeaCount));
 
-    List<SortedSet<short>> tickGroups = [];
-    //int currentTicksPerMea = 4 * NbsTicksPerQuarterNote;
+        currentTicksPerMea = (short)((4 / (double.Pow(2, timeSignature.Denominator)) * timeSignature.Numerator) * NbsTicksPerQuarterNote);
+      }
+      if (lastMeaAlignedTick < songLength - 1)
+      {
+        short lastMeaCount = (short)double.Ceiling((double)(songLength - lastMeaAlignedTick) / currentTicksPerMea);
+        groupedTickCounts.AddRange(Enumerable.Repeat(currentTicksPerMea, lastMeaCount));
+      }
+    }
 
-
+    Dictionary<NbsNote, int> noteGroupIndexes = [];
     Dictionary<NbsNote, short> noteSorts = [];
-    Dictionary<short, SortedSet<NbsNoteLayerKey>> sortedGroupedNoteLayerKeys = [];    
+    Dictionary<int, SortedSet<NbsNoteLayerKey>> sortedGroupedNoteLayerKeys = [];
 
-    foreach (var groupedNotesByTick in nbsNotesByTick.GroupBy(x => (short)(x.Key / SplitPeriod)))
+    SortedDictionary<int, SortedDictionary<short, HashSet<NbsNote>>> groupedNbsNotes = [];
+    {
+      int currentTick = 0;
+      foreach (var (index, count) in groupedTickCounts.Index())
+      {
+        SortedDictionary<short, HashSet<NbsNote>> newGroup = new(nbsNotesByTick.Where(x => x.Key >= currentTick && x.Key < currentTick + count).ToDictionary());
+        if (newGroup.Count > 0)
+        {
+          groupedNbsNotes.Add(index, newGroup);
+        }
+        currentTick += count;
+
+        foreach (var note in newGroup.SelectMany(x => x.Value))
+        {
+          noteGroupIndexes[note] = index;
+        }
+      }
+    }
+
+    foreach (var (groupIndex, groupedNotesByTick) in groupedNbsNotes)
     {
       SortedSet<NbsNoteLayerKey> noteKeys = new(NbsNoteLayerKeyComparer.Instance);
 
@@ -237,10 +270,10 @@ internal class Program
         noteSorts[note] = sort;
       }
 
-      sortedGroupedNoteLayerKeys[groupedNotesByTick.Key] = noteKeys;
+      sortedGroupedNoteLayerKeys[groupIndex] = noteKeys;
     }
 
-    Dictionary<short, Dictionary<NbsNoteLayerKey, short>> layerByNoteKey
+    Dictionary<int, Dictionary<NbsNoteLayerKey, short>> layerByNoteKey
       = sortedGroupedNoteLayerKeys.ToDictionary(outerPair => outerPair.Key, outerPair => outerPair.Value.Index().ToDictionary(x => x.Item, x => (short)x.Index));
 
     short layerCount = (short)sortedGroupedNoteLayerKeys.MaxBy(x => x.Value.Count).Value.Count;
@@ -249,41 +282,43 @@ internal class Program
     writer.Write(layerCount);
     fstream.Position = previousPos;
 
-    short currentTick = -1;
-
-    foreach (var (tick, notes) in nbsNotesByTick)
     {
-      if (notes.Count == 0)
+      short currentTick = -1;
+
+      foreach (var (tick, notes) in nbsNotesByTick)
       {
-        continue;
-      }
+        if (notes.Count == 0)
+        {
+          continue;
+        }
 
-      short alignedTick = (short)(tick - songStartTime);
+        short alignedTick = (short)(tick - songStartTime);
 
-      short jumpTick = (short)(alignedTick - currentTick);
-      currentTick = alignedTick;
+        short jumpTick = (short)(alignedTick - currentTick);
+        currentTick = alignedTick;
 
-      writer.Write(jumpTick);
+        writer.Write(jumpTick);
 
-      short currentLayer = -1;
+        short currentLayer = -1;
 
-      foreach (var (note, layer) in notes.Select(x => (note: x, layer: layerByNoteKey[(short)(tick / SplitPeriod)][new(x.Inst, x.Track, noteSorts[x])])))
-      {
-        short jumpLayer = (short)(layer - currentLayer);
-        currentLayer = layer;
+        foreach (var (note, layer) in notes.Select(x => (note: x, layer: layerByNoteKey[noteGroupIndexes[x]][new(x.Inst, x.Track, noteSorts[x])])).OrderBy(x => x.layer))
+        {
+          short jumpLayer = (short)(layer - currentLayer);
+          currentLayer = layer;
 
-        writer.Write(jumpLayer);
-        writer.Write(note.Inst);
-        writer.Write(note.Key);
-        writer.Write(note.Vel);
-        writer.Write(note.Pan);
-        writer.Write(note.Pitch);
+          writer.Write(jumpLayer);
+          writer.Write(note.Inst);
+          writer.Write(note.Key);
+          writer.Write(note.Vel);
+          writer.Write(note.Pan);
+          writer.Write(note.Pitch);
+        }
+
+        writer.Write((short)0);
       }
 
       writer.Write((short)0);
     }
-
-    writer.Write((short)0);
 
     #endregion nbs: note blocks
 
@@ -330,9 +365,9 @@ internal class Program
 
   readonly record struct NbsInstAndTrack(sbyte Inst, int Track);
 
-  readonly record struct NbsNote(short Tick, sbyte Inst, sbyte Key, sbyte Vel, byte Pan, short Pitch, short Track)
+  record class NbsNote(short Tick, sbyte Inst, sbyte Key, sbyte Vel, byte Pan, short Pitch, short Track)
   {
-    public readonly NbsInstAndTrack InstAndTrack = new(Inst, Track);
+    public NbsInstAndTrack InstAndTrack => new(Inst, Track);
   }
 
   class ChannelState(int inst = 0, int pan = 64)
@@ -369,8 +404,16 @@ internal class Program
   {
     public static NbsNoteEqualityComparerForNoteSet Instance = new();
 
-    public bool Equals(NbsNote x, NbsNote y)
+    public bool Equals(NbsNote? x, NbsNote? y)
     {
+      if (x == null && y == null)
+      {
+        return true;
+      }
+      if (x == null || y == null)
+      {
+        return false;
+      }
       return x.Inst == y.Inst && x.Key == y.Key && x.Track == y.Track;
     }
     public int GetHashCode([DisallowNull] NbsNote obj)
