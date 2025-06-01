@@ -148,7 +148,9 @@ public static class Midi2Nbs
         {
           byte finalMidiVelocity = config.DoForceVelocity ? config.ForceMidiVelocity : (byte)noteOn.Velocity;
 
-          NbsNote nbsNote = 
+          if (finalMidiVelocity > 0)
+          {
+            NbsNote nbsNote =
             new(thisTime,
                 (sbyte)(config.DoForcePatch ? config.ForcePatch : channelState.Inst),
                 (sbyte)int.Clamp(noteOn.NoteNumber - 21, 0, 87),
@@ -157,7 +159,8 @@ public static class Midi2Nbs
                 0,
                 trackIndex);
 
-          nbsNotesByTick.GetOrAdd(thisTime, key => new(NbsNoteEqualityComparerForNoteSet.Instance)).Add(nbsNote);
+            nbsNotesByTick.GetOrAdd(thisTime, key => new(NbsNoteEqualityComparerForNoteSet.Instance)).Add(nbsNote);
+          }          
         }
       }
     }

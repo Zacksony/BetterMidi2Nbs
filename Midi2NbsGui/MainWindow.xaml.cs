@@ -57,21 +57,21 @@ public partial class MainWindow : Window
       }
     }
     
-    if (config.NbsTicksPerQuarterNote is <= 0 or > 32767)
+    if (config.NbsTicksPerQuarterNote is < 1 or > 32767)
     {
       UI.MessageBox.Show(this, "'Ticks Per Quarter Note' must be in the range 1-32767", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
       return false;
     }
 
-    if (config.VisualAlignBarlines is <= 0 or > 32767)
+    if (config.VisualAlignBarlines is < 1 or > 32767)
     {
       UI.MessageBox.Show(this, "'Note Grouping Align Barlines' must be in the range 1-32767.", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
       return false;
     }
 
-    if (config.DoForceVelocity && config.ForceMidiVelocity is < 0 or > 127)
+    if (config.DoForceVelocity && config.ForceMidiVelocity is < 1 or > 127)
     {
-      UI.MessageBox.Show(this, "'Force Midi Velocity' must be in the range 0-127.", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
+      UI.MessageBox.Show(this, "'Force Midi Velocity' must be in the range 1-127.", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
       return false;
     }
 
