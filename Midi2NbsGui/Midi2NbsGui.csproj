@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="resources\fonts\FluentSystemIcons-Filled.ttf" />
+    <None Remove="resources\fonts\FluentSystemIcons-Regular.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="iNKORE.UI.WPF.Modern" Version="0.10.0" />
+    <PackageReference Include="ValueConverters" Version="3.1.22" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Midi2Nbs\Midi2Nbs.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="resources\fonts\FluentSystemIcons-Filled.ttf" />
+    <Resource Include="resources\fonts\FluentSystemIcons-Regular.ttf" />
+  </ItemGroup>
+
+</Project>

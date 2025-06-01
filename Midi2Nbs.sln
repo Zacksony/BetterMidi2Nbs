@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36127.28
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Midi2Nbs", "Midi2Nbs\Midi2Nbs.csproj", "{9A9F94AA-AAB3-4D72-89FC-CF35127886D8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Midi2NbsGui", "Midi2NbsGui\Midi2NbsGui.csproj", "{46292B78-49E3-4881-BC15-07DCDDA6C230}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{9A9F94AA-AAB3-4D72-89FC-CF35127886D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9A9F94AA-AAB3-4D72-89FC-CF35127886D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9A9F94AA-AAB3-4D72-89FC-CF35127886D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{46292B78-49E3-4881-BC15-07DCDDA6C230}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46292B78-49E3-4881-BC15-07DCDDA6C230}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46292B78-49E3-4881-BC15-07DCDDA6C230}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46292B78-49E3-4881-BC15-07DCDDA6C230}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

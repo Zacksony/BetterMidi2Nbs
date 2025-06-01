@@ -1,4 +1,5 @@
 ﻿using NAudio.Midi;
+using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -7,17 +8,8 @@ using System.Text;
 
 namespace Midi2Nbs;
 
-internal class Program
+public static class Midi2Nbs
 {
-  const string SongNameEventHeader = "[SONGNAME]";
-  const string SongDescEventHeader = "[SONGDESC]";
-  const string OriginalAuthorEventHeader = "[ORIGINALAUTHOR]";
-  const string SongAuthorEventHeader = "[SONGAUTHOR]";
-  const string SongStartEventText = "[START]";
-  const string LoopEventText = "[LOOP]";
-
-  const int NbsTicksPerQuarterNote = 8;
-
   static readonly FrozenDictionary<short, string> NbsInstNameMap = new Dictionary<short, string>
   {
     [0]  = "Piano",
@@ -38,24 +30,20 @@ internal class Program
     [15] = "Pling",
   }.ToFrozenDictionary();
 
-  static void Main(string[] args)
+  public static string GetDefaultNbsSavePath(string midiPath)
   {
-#if DEBUG
-    string midiPath = @"D:\MIDI\nbs-mus-proj\m2n-debug\purple.mid";
-#else
-    if (args.Length != 1)
-    {
-      Console.WriteLine("Usage: Midi2Nbs <filePath>");
-      return;
-    }
-    string midiPath = args[0].Replace("\"", null).Replace("'", null).Trim();
-#endif
+    return Path.ChangeExtension(midiPath, "nbs");
+  }
 
-    string nbsOutputPath = GetNbsOutputPath(midiPath);
+  public static void Start(M2NConfig config)
+  {
+    string midiPath = config.InputMidiPath ?? throw new InvalidOperationException("InputMidiPath can't be null.");
+
+    string nbsOutputPath = config.LetUserSelectNbsSavePath ? config.NbsSavePath! : config.AutoSelectedNbsSavePath!;
 
     MidiFile mf = new(midiPath);
 
-    int midiTicksPerMinecraftTick = mf.DeltaTicksPerQuarterNote / NbsTicksPerQuarterNote;
+    int midiTicksPerMinecraftTick = mf.DeltaTicksPerQuarterNote / config.NbsTicksPerQuarterNote;
 
     short songStartTime = 0;
     short songLoopTime = -1;
@@ -77,21 +65,21 @@ internal class Program
         {
           if (textEvent.MetaEventType is MetaEventType.TextEvent)
           {
-            if (textEvent.Text.StartsWith(SongDescEventHeader))
+            if (textEvent.Text.StartsWith(config.SongDescEventHeader))
             {
-              songDesc = textEvent.Text.Replace(SongDescEventHeader, null);
+              songDesc = textEvent.Text.Replace(config.SongDescEventHeader, null);
             }
-            else if (textEvent.Text.StartsWith(OriginalAuthorEventHeader))
+            else if (textEvent.Text.StartsWith(config.OriginalAuthorEventHeader))
             {
-              songOriginalAuthor = textEvent.Text.Replace(OriginalAuthorEventHeader, null);
+              songOriginalAuthor = textEvent.Text.Replace(config.OriginalAuthorEventHeader, null);
             }
-            else if (textEvent.Text.StartsWith(SongAuthorEventHeader))
+            else if (textEvent.Text.StartsWith(config.SongAuthorEventHeader))
             {
-              songAuthor = textEvent.Text.Replace(SongAuthorEventHeader, null);
+              songAuthor = textEvent.Text.Replace(config.SongAuthorEventHeader, null);
             }
-            else if (textEvent.Text.StartsWith(SongNameEventHeader))
+            else if (textEvent.Text.StartsWith(config.SongNameEventHeader))
             {
-              songName = textEvent.Text.Replace(SongNameEventHeader, null);
+              songName = textEvent.Text.Replace(config.SongNameEventHeader, null);
             }
           }
         }
@@ -112,7 +100,7 @@ internal class Program
 
     foreach (var channel in mf.Events.SelectMany((events, trackIndex) => events.Select(midiEvent => (midiEvent, (short)trackIndex))).GroupBy(x => x.midiEvent.Channel))
     {
-      ChannelState channelState = new();
+      ChannelState channelState = new(inst: config.StartingPatch);
 
       foreach (var (midiEvent, trackIndex) in 
         channel.Where(x => x.midiEvent.CommandCode is MidiCommandCode.NoteOn
@@ -139,26 +127,35 @@ internal class Program
 
         if (midiEvent is TextEvent { MetaEventType: MetaEventType.Marker } meta)
         {
-          if (meta.Text == SongStartEventText)
+          if (meta.Text == config.SongStartMarkerEventText)
           {
             songStartTime = thisTime;
           }
-          else if (meta.Text == LoopEventText)
+          else if (meta.Text == config.LoopMarkerEventText)
           {
             songLoopTime = thisTime;
           }
         }
-        else if (midiEvent is ControlChangeEvent { Controller: MidiController.Pan } cc)
+        else if (config.EnablePanpot && midiEvent is ControlChangeEvent { Controller: MidiController.Pan } cc)
         {
           channelState.Pan = cc.ControllerValue;
         }
-        else if (midiEvent is PatchChangeEvent pc)
+        else if (!config.DoForcePatch && config.EnableProgramChange && midiEvent is PatchChangeEvent pc)
         {
           channelState.Inst = pc.Patch;
         }
         else if (midiEvent is NoteOnEvent noteOn)
         {
-          NbsNote nbsNote = MidiNoteToNbsNote(thisTime, channelState.Inst, channelState.Pan, trackIndex, noteOn);
+          byte finalMidiVelocity = config.DoForceVelocity ? config.ForceMidiVelocity : (byte)noteOn.Velocity;
+
+          NbsNote nbsNote = 
+            new(thisTime,
+                (sbyte)(config.DoForcePatch ? config.ForcePatch : channelState.Inst),
+                (sbyte)int.Clamp(noteOn.NoteNumber - 21, 0, 87),
+                (sbyte)int.Clamp(config.DoCalculateVelocity ? MidiVelToMinecraftVel((byte)finalMidiVelocity) : finalMidiVelocity, 0, 100),
+                (byte)double.Round(double.Clamp(channelState.Pan * 1.5625, 0, 200)),
+                0,
+                trackIndex);
 
           nbsNotesByTick.GetOrAdd(thisTime, key => new(NbsNoteEqualityComparerForNoteSet.Instance)).Add(nbsNote);
         }
@@ -215,19 +212,20 @@ internal class Program
     List<short> groupedTickCounts = [];
     {
       short lastMeaAlignedTick = 0;
-      short currentTicksPerMea = 4 * NbsTicksPerQuarterNote;
+      short currentTicksPerGroup = (short)(4 * config.NbsTicksPerQuarterNote * config.VisualAlignBarlines);
+
       foreach (var (tick, timeSignature) in timeSignatureEvents)
       {
-        short lastMeaCount = (short)double.Floor((double)(tick - lastMeaAlignedTick) / currentTicksPerMea);
-        lastMeaAlignedTick = (short)(lastMeaAlignedTick + lastMeaCount * currentTicksPerMea);
-        groupedTickCounts.AddRange(Enumerable.Repeat(currentTicksPerMea, lastMeaCount));
+        short lastMeaCount = (short)double.Floor((double)(tick - lastMeaAlignedTick) / currentTicksPerGroup);
+        lastMeaAlignedTick = (short)(lastMeaAlignedTick + lastMeaCount * currentTicksPerGroup);
+        groupedTickCounts.AddRange(Enumerable.Repeat(currentTicksPerGroup, lastMeaCount));
 
-        currentTicksPerMea = (short)((4 / (double.Pow(2, timeSignature.Denominator)) * timeSignature.Numerator) * NbsTicksPerQuarterNote);
+        currentTicksPerGroup = (short)((4 / (double.Pow(2, timeSignature.Denominator)) * timeSignature.Numerator) * config.NbsTicksPerQuarterNote * config.VisualAlignBarlines);
       }
-      if (lastMeaAlignedTick < songLength - 1)
+      if (lastMeaAlignedTick <= songLength - 1)
       {
-        short lastMeaCount = (short)double.Ceiling((double)(songLength - lastMeaAlignedTick) / currentTicksPerMea);
-        groupedTickCounts.AddRange(Enumerable.Repeat(currentTicksPerMea, lastMeaCount));
+        short lastMeaCount = (short)double.Ceiling((double)(songLength - lastMeaAlignedTick) / currentTicksPerGroup);
+        groupedTickCounts.AddRange(Enumerable.Repeat(currentTicksPerGroup, lastMeaCount));
       }
     }
 
@@ -326,7 +324,7 @@ internal class Program
 
     for (int i = 0; i < layerCount; i++)
     {
-      writer.WriteNbsFormatString($"Layer #{i}");
+      writer.WriteNbsFormatString(string.Format(config.LayerNameFormat, i));
       writer.Write((sbyte)0);
       writer.Write((sbyte)100);
       writer.Write((byte)100);
@@ -341,24 +339,34 @@ internal class Program
     #endregion nbs: custom instruments
 
     #endregion write nbs file
-
-    Console.WriteLine("Done.");
   }
 
-  static NbsNote MidiNoteToNbsNote(short tick, int cInst, int cPan, short trackIndex, NoteOnEvent midiNoteOn)
+  static FrozenDictionary<byte, byte>? _midiVelToMinecraftVelMap;
+
+  static FrozenDictionary<byte, byte> MidiVelToMinecraftVelMap => _midiVelToMinecraftVelMap ??= InitializeMidiVelToMinecraftVelMap();
+
+  static byte MidiVelToMinecraftVel(byte midiVel)
   {
-    return new(tick,
-               (sbyte)cInst,
-               (sbyte)int.Clamp(midiNoteOn.NoteNumber - 21, 0, 87),
-               (sbyte)int.Clamp(midiNoteOn.Velocity, 0, 100),
-               (byte)double.Round(double.Clamp(cPan * 1.5625, 0, 200)),
-               0,
-               trackIndex);
+    midiVel = byte.Clamp(midiVel, 1, 127);
+    return MidiVelToMinecraftVelMap.GetValueOrDefault(midiVel, (byte)1);
   }
 
-  static string GetNbsOutputPath(string midiPath)
+  static FrozenDictionary<byte, byte> InitializeMidiVelToMinecraftVelMap()
   {
-    return Path.ChangeExtension(midiPath, "nbs");
+    var minecraftAttMap = Enumerable.Range(1, 100).Select(x => ((byte)x, double.Max(-20d * double.Log10(x / 100d), 0))).ToDictionary();
+    var midiAttMap = Enumerable.Range(1, 127).Select(x => ((byte)x, double.Max(-20d * double.Log10(double.Pow(x, 2) / double.Pow(127, 2)), 0))).ToDictionary();
+
+    Dictionary<byte, byte> result = [];
+
+    foreach (var (midiVel, midiAtt) in midiAttMap)
+    {
+      byte closestMinecraftKey = minecraftAttMap.Aggregate((x, y) =>
+            Math.Abs(x.Value - midiAtt) < Math.Abs(y.Value - midiAtt) ? x : y).Key;
+
+      result[midiVel] = closestMinecraftKey;
+    }
+
+    return result.ToFrozenDictionary();
   }
 
   readonly record struct NbsNoteLayerKey(sbyte Inst, int Track, short Sort);
