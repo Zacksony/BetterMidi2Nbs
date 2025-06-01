@@ -24,6 +24,7 @@ public class M2NConfig
   public bool DoCalculateVelocity { get; set; } = true;
   public bool DoForceVelocity { get; set; } = false;
   public byte ForceMidiVelocity { get; set; } = 127;
+  public byte MinMidiVelocity { get; set; } = 1;
   public bool EnablePanpot { get; set; } = true;
   public bool EnableProgramChange { get; set; } = true;
   public int StartingPatch { get; set; } = 0;

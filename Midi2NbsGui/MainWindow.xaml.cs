@@ -75,6 +75,12 @@ public partial class MainWindow : Window
       return false;
     }
 
+    if (config.MinMidiVelocity is < 1 or > 127)
+    {
+      UI.MessageBox.Show(this, "'Min Midi Velocity' must be in the range [1,127].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
+      return false;
+    }
+
     if (config.StartingPatch is < 0 or > 127)
     {
       UI.MessageBox.Show(this, "'Default PC' must be in the range [0,127].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);

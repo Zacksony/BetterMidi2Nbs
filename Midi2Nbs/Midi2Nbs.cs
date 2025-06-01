@@ -148,7 +148,7 @@ public static class Midi2Nbs
         {
           byte finalMidiVelocity = config.DoForceVelocity ? config.ForceMidiVelocity : (byte)noteOn.Velocity;
 
-          if (finalMidiVelocity > 0)
+          if (finalMidiVelocity >= config.MinMidiVelocity)
           {
             NbsNote nbsNote =
             new(thisTime,
@@ -263,7 +263,7 @@ public static class Midi2Nbs
         groupedNotesByTick.SelectMany(
           pair => pair.Value.GroupBy(note => note.InstAndTrack)
                             .SelectMany(notes => notes.GroupBy(note => note.Tick)
-                                                      .SelectMany(notesByTick => notesByTick.Select((note, index) => (key: new NbsNoteLayerKey(note.Inst, note.Track, (short)index), note: note, sort: (short)index)))));
+                                                      .SelectMany(notesByTick => notesByTick.Select((note, index) => (key: new NbsNoteLayerKey(note.Inst, note.Track, (short)index), note, sort: (short)index)))));
 
       foreach (var (key, note, sort) in newNoteSorts)
       {
