@@ -56,7 +56,7 @@ public partial class MainWindow : Window
         return false;
       }
     }
-    
+
     if (config.NbsTicksPerQuarterNote is < 1 or > 32767)
     {
       UI.MessageBox.Show(this, "'Ticks Per Quarter Note' must be in the range [1,32767]", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
@@ -103,7 +103,7 @@ public partial class MainWindow : Window
       Midi2Nbs.Midi2Nbs.Start(config);
 
       // Text of UI.MessageBox would dispear sometimes without Thread.Sleep
-      Thread.Sleep(100);
+      Thread.Sleep(100);      
 
       UI.MessageBox.Show(this, "Conversion Successful!", "Congratulations", MessageBoxButton.OK, MessageBoxImage.Information);
       return true;
@@ -114,7 +114,7 @@ public partial class MainWindow : Window
       // causes visual issue
       System.Windows.MessageBox.Show(this, $"Conversion Failed. Message: {e}", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
       return false;
-    }    
+    }
   }
 
   private bool OnAskRestoreConfig()

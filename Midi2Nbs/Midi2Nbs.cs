@@ -37,18 +37,31 @@ public static class Midi2Nbs
 
   public static void Start(M2NConfig config)
   {
+    using ExecuteOnExit gcCollectionOnExit = new();
+    gcCollectionOnExit.Actions.Add(() =>
+    {
+      GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+      GC.WaitForPendingFinalizers();
+      GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+    });
+    using ExecuteOnExit onExit = new();
+
     string midiPath = config.InputMidiPath ?? throw new InvalidOperationException("InputMidiPath can't be null.");
 
     string nbsOutputPath = config.LetUserSelectNbsSavePath ? config.NbsSavePath! : config.AutoSelectedNbsSavePath!;
 
-    MidiFile mf = new(midiPath);
+    MidiFile mf = new(midiPath, false);
+    onExit.Actions.Add(() => mf = null!);
 
     int midiTicksPerMinecraftTick = mf.DeltaTicksPerQuarterNote / config.NbsTicksPerQuarterNote;
 
     short songStartTime = 0;
     short songLoopTime = -1;
     SortedDictionary<short, HashSet<NbsNote>> nbsNotesByTick = [];
+    onExit.Actions.Add(() => nbsNotesByTick = null!);
+
     SortedDictionary<short, TimeSignatureEvent> timeSignatureEvents = [];
+    onExit.Actions.Add(() => timeSignatureEvents = null!);
 
     #region read events, convert to nbsNotes
 
@@ -172,6 +185,9 @@ public static class Midi2Nbs
     using FileStream fstream = File.Create(nbsOutputPath);
     using BinaryWriter writer = new(fstream);
 
+    onExit.Actions.Add(() => writer.Dispose());
+    onExit.Actions.Add(() => fstream.Dispose());
+
     short songLength = (short)(nbsNotesByTick.Keys.Max() + 1);
 
     #region nbs: header
@@ -212,7 +228,8 @@ public static class Midi2Nbs
 
     #region nbs: note blocks
 
-    List<short> groupedTickCounts = [];
+    List<short> groupedTickCounts = [];    
+    onExit.Actions.Add(() => groupedTickCounts = null!);
     {
       short lastMeaAlignedTick = 0;
       short currentTicksPerGroup = (short)(4 * config.NbsTicksPerQuarterNote * config.VisualAlignBarlines);
@@ -233,10 +250,17 @@ public static class Midi2Nbs
     }
 
     Dictionary<NbsNote, int> noteGroupIndexes = [];
+    onExit.Actions.Add(() => noteGroupIndexes = null!);
+
     Dictionary<NbsNote, short> noteSorts = [];
+    onExit.Actions.Add(() => noteSorts = null!);
+
     Dictionary<int, SortedSet<NbsNoteLayerKey>> sortedGroupedNoteLayerKeys = [];
+    onExit.Actions.Add(() => sortedGroupedNoteLayerKeys = null!);
 
     SortedDictionary<int, SortedDictionary<short, HashSet<NbsNote>>> groupedNbsNotes = [];
+    onExit.Actions.Add(() => groupedNbsNotes = null!);
+
     {
       int currentTick = 0;
       foreach (var (index, count) in groupedTickCounts.Index())
@@ -263,7 +287,7 @@ public static class Midi2Nbs
         groupedNotesByTick.SelectMany(
           pair => pair.Value.GroupBy(note => note.InstAndTrack)
                             .SelectMany(notes => notes.GroupBy(note => note.Tick)
-                                                      .SelectMany(notesByTick => notesByTick.Select((note, index) => (key: new NbsNoteLayerKey(note.Inst, note.Track, (short)index), note, sort: (short)index)))));
+                                                      .SelectMany(notesByTick => notesByTick.Select((note, index) => (key: new NbsNoteLayerKey(note.Inst, note.Track, (short)-index), note, sort: (short)-index)))));
 
       foreach (var (key, note, sort) in newNoteSorts)
       {
@@ -276,6 +300,8 @@ public static class Midi2Nbs
 
     Dictionary<int, Dictionary<NbsNoteLayerKey, short>> layerByNoteKey
       = sortedGroupedNoteLayerKeys.ToDictionary(outerPair => outerPair.Key, outerPair => outerPair.Value.Index().ToDictionary(x => x.Item, x => (short)x.Index));
+
+    onExit.Actions.Add(() => layerByNoteKey = null!);
 
     short layerCount = (short)sortedGroupedNoteLayerKeys.MaxBy(x => x.Value.Count).Value.Count;
     long previousPos = fstream.Position;
