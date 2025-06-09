@@ -313,7 +313,8 @@
                             ToolTipService.InitialShowDelay="300" />
                         <Grid
                             Grid.Row="1"
-                            Grid.Column="0">
+                            Grid.Column="0"
+                            Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="88" />
@@ -334,7 +335,8 @@
 
                         <Grid
                             Grid.Row="1"
-                            Grid.Column="1">
+                            Grid.Column="1"
+                            Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="88" />
@@ -356,19 +358,22 @@
                         <CheckBox
                             Grid.Row="2"
                             Grid.Column="0"
+                            Margin="0,8,0,0"
                             Content="Enable Panpot"
                             FontWeight="Normal"
                             IsChecked="{Binding Config.EnablePanpot}" />
                         <CheckBox
                             Grid.Row="2"
                             Grid.Column="1"
+                            Margin="0,8,0,0"
                             Content="Enable Program Change"
                             FontWeight="Normal"
                             IsChecked="{Binding Config.EnableProgramChange}" />
 
                         <Grid
                             Grid.Row="3"
-                            Grid.Column="0">
+                            Grid.Column="0"
+                            Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="88" />
@@ -388,7 +393,8 @@
                         </Grid>
                         <Grid
                             Grid.Row="3"
-                            Grid.Column="1">
+                            Grid.Column="1"
+                            Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="88" />
@@ -415,96 +421,124 @@
                     Header="NBS Config">
                     <Grid Margin="10">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <CheckBox
                             Grid.Row="0"
                             Grid.Column="0"
+                            Content="Better Lower Register Of Piano"
+                            FontWeight="Normal"
+                            IsChecked="{Binding Config.BetterLowerRegisterOfPiano}"
+                            ToolTip="Changes the instrument of Piano notes in the lower register (MIDI note number ≤ 42) to Bass."
+                            ToolTipService.InitialShowDelay="300" />
+                        <CheckBox
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Margin="0,8,0,0"
                             Content="Caculate Tempo Changes"
                             FontWeight="Normal"
                             IsChecked="{Binding Config.DoConsiderTempoChange}" />
-                        <TextBlock
-                            Grid.Row="0"
-                            Grid.Column="2"
-                            Margin="0,0,10,0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="Ticks Per Second:"
-                            ToolTip="a.k.a. Accuracy when tempo changes are enabled."
-                            Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        <TextBox
-                            Grid.Row="0"
-                            Grid.Column="3"
-                            Width="88"
-                            HorizontalAlignment="Left"
-                            FontWeight="Normal"
-                            PreviewTextInput="NumberOnly"
-                            Text="{Binding Config.NbsTPS, Mode=TwoWay}"
-                            Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        <TextBlock
-                            Grid.Row="0"
-                            Grid.Column="2"
-                            Margin="0,0,10,0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="Ticks Per Quarter Note:"
-                            Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
-                        <TextBox
-                            Grid.Row="0"
-                            Grid.Column="3"
-                            Width="88"
-                            HorizontalAlignment="Left"
-                            FontWeight="Normal"
-                            PreviewTextInput="NumberOnly"
-                            Text="{Binding Config.NbsTicksPerQuarterNote, Mode=TwoWay}"
-                            Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
-                        <TextBlock
-                            Grid.Row="1"
-                            Grid.Column="0"
-                            Margin="0,0,10,0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="Note Grouping Align Barlines:"
-                            ToolTip="Sets how many measures per group the notes should be arranged and exported with. Decimal values are allowed, but it's generally recommended to use regular numbers like 0.5, 1, or 2. Time signature change events are supported and will dynamically adjust the measure grouping. This value only affects visual presentation."
-                            ToolTipService.InitialShowDelay="300" />
-                        <TextBox
+                        <Grid
                             Grid.Row="1"
                             Grid.Column="1"
-                            Width="88"
-                            HorizontalAlignment="Left"
-                            FontWeight="Normal"
-                            PreviewTextInput="DecimalOnly"
-                            Text="{Binding Config.VisualAlignBarlines, Mode=TwoWay}" />
-                        <TextBlock
-                            Grid.Row="1"
-                            Grid.Column="2"
-                            Margin="0,0,10,0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="Layer Name Format:"
-                            ToolTip="Sets formatted layer name. {0} = Layer Index. For example, 'My Layer #{0}' will display as 'My Layer #0', 'My Layer #1', 'My Layer #2' etc.."
-                            ToolTipService.InitialShowDelay="300" />
-                        <TextBox
-                            Grid.Row="1"
-                            Grid.Column="3"
-                            Margin="0,0,0,0"
-                            FontWeight="Normal"
-                            Text="{Binding Config.LayerNameFormat, Mode=TwoWay}" />
+                            Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="88" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Column="0"
+                                Margin="0,0,10,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="Ticks Per Second:"
+                                ToolTip="a.k.a. Accuracy when tempo changes are enabled."
+                                ToolTipService.InitialShowDelay="300"
+                                Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <TextBox
+                                Grid.Column="1"
+                                Width="88"
+                                HorizontalAlignment="Left"
+                                FontWeight="Normal"
+                                PreviewTextInput="NumberOnly"
+                                Text="{Binding Config.NbsTPS, Mode=TwoWay}"
+                                Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <TextBlock
+                                Grid.Column="0"
+                                Margin="0,0,10,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="Ticks Per Quarter Note:"
+                                Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                            <TextBox
+                                Grid.Column="1"
+                                Width="88"
+                                HorizontalAlignment="Left"
+                                FontWeight="Normal"
+                                PreviewTextInput="NumberOnly"
+                                Text="{Binding Config.NbsTicksPerQuarterNote, Mode=TwoWay}"
+                                Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                        </Grid>
+                        <Grid
+                            Grid.Row="2"
+                            Grid.Column="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="88" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Column="0"
+                                Margin="0,8,10,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="Note Grouping Barlines:"
+                                ToolTip="Sets how many measures per group the notes should be arranged and exported with. Decimal values are allowed, but it's generally recommended to use regular numbers like 0.5, 1, or 2. Time signature change events are supported and will dynamically adjust the measure grouping. This value only affects visual presentation."
+                                ToolTipService.InitialShowDelay="300" />
+                            <TextBox
+                                Grid.Column="1"
+                                Width="88"
+                                Margin="0,8,0,0"
+                                HorizontalAlignment="Left"
+                                FontWeight="Normal"
+                                PreviewTextInput="DecimalOnly"
+                                Text="{Binding Config.VisualAlignBarlines, Mode=TwoWay}" />
+                        </Grid>
+                        <Grid
+                            Grid.Row="2"
+                            Grid.Column="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="138" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Column="0"
+                                Margin="0,8,10,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="Layer Name Format:"
+                                ToolTip="Sets formatted layer name. {0} = Layer Index. For example, 'My Layer #{0}' will display as 'My Layer #0', 'My Layer #1', 'My Layer #2' etc.."
+                                ToolTipService.InitialShowDelay="300" />
+                            <TextBox
+                                Grid.Column="1"
+                                Margin="0,8,0,0"
+                                FontWeight="Normal"
+                                Text="{Binding Config.LayerNameFormat, Mode=TwoWay}" />
+                        </Grid>
+
                     </Grid>
                 </GroupBox>
 

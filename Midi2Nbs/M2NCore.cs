@@ -109,10 +109,20 @@ public sealed class M2NCore(M2NConfig config)
             continue;
           }
 
+          sbyte outputInst = (sbyte)(config.DoForcePatch ? config.ForcePatch : channelState.Inst);
+          sbyte outputKey = (sbyte)noteOn.NoteNumber;
+          sbyte outputVel = (sbyte)(config.DoForceVelocity ? config.ForceMidiVelocity : noteOn.Velocity);
+
+          if (config.BetterLowerRegisterOfPiano && outputInst == 0 && outputKey <= 42)
+          {
+            outputInst = 1;
+            outputKey += 12;
+          }
+          
           MidiNote midiNote =
-            new((sbyte)(config.DoForcePatch ? config.ForcePatch : channelState.Inst),
-                (sbyte)noteOn.NoteNumber,
-                (sbyte)(config.DoForceVelocity ? config.ForceMidiVelocity : noteOn.Velocity),
+            new(outputInst,
+                outputKey,
+                outputVel,
                 channelState.Pan,
                 trackIndex);
 
@@ -221,11 +231,12 @@ public sealed class M2NCore(M2NConfig config)
           }
 
           int maxIndexInThisLayer = 0;
-          foreach (var (time, noteList) in nbsNotesInBigLayerByTime)
+          foreach (var (tick, noteList) in nbsNotesInBigLayerByTime.GroupBy(x => timeToTickMap[x.Key])
+                                                                   .Select(x => (x.Key, x.SelectMany(y => y.Value))))
           {
             foreach (var (indexInThisLayer, nbsNote) in noteList.Index())
             {
-              layeredNbsNotesByTick.GetOrAdd(timeToTickMap[time], key => [])[startingLayerIndex + indexInThisLayer] = nbsNote;
+              layeredNbsNotesByTick.GetOrAdd(tick, key => [])[startingLayerIndex + indexInThisLayer] = nbsNote;
               maxIndexInThisLayer = indexInThisLayer > maxIndexInThisLayer ? indexInThisLayer : maxIndexInThisLayer;
             }
           }
@@ -234,6 +245,9 @@ public sealed class M2NCore(M2NConfig config)
         }
       }
     }
+
+    int count1 = layeredNbsNotesByTick.Sum(x => x.Value.Count);
+    int count2 = nbsNotesByTime.Sum(x => x.Value.Count);
 
     // cleanup
 

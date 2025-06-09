@@ -21,6 +21,7 @@ public class M2NConfig
   public string LayerNameFormat { get; set; } = "Layer #{0}";
   public short NbsTicksPerQuarterNote { get; set; } = 8;
   public bool DoConsiderTempoChange { get; set; } = true;
+  public bool BetterLowerRegisterOfPiano { get; set; } = false;
   public double NbsTPS { get; set; } = 20;
   public double VisualAlignBarlines { get; set; } = 1;
   public bool DoCalculateVelocity { get; set; } = true;
