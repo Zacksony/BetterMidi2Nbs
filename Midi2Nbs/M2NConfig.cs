@@ -20,6 +20,8 @@ public class M2NConfig
   public string LoopMarkerEventText { get; set; } = "[LOOP]";
   public string LayerNameFormat { get; set; } = "Layer #{0}";
   public short NbsTicksPerQuarterNote { get; set; } = 8;
+  public bool DoConsiderTempoChange { get; set; } = true;
+  public double NbsTPS { get; set; } = 20;
   public double VisualAlignBarlines { get; set; } = 1;
   public bool DoCalculateVelocity { get; set; } = true;
   public bool DoForceVelocity { get; set; } = false;
@@ -29,5 +31,5 @@ public class M2NConfig
   public bool EnableProgramChange { get; set; } = true;
   public int StartingPatch { get; set; } = 0;
   public bool DoForcePatch { get; set; } = false;
-  public int ForcePatch { get; set; } = 0;
+  public byte ForcePatch { get; set; } = 0;
 }

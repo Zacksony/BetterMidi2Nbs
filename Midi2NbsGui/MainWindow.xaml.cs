@@ -57,9 +57,15 @@ public partial class MainWindow : Window
       }
     }
 
-    if (config.NbsTicksPerQuarterNote is < 1 or > 32767)
+    if (!config.DoConsiderTempoChange && config.NbsTicksPerQuarterNote is < 1 or > 32767)
     {
       UI.MessageBox.Show(this, "'Ticks Per Quarter Note' must be in the range [1,32767]", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
+      return false;
+    }
+
+    if (config.DoConsiderTempoChange && config.NbsTPS is < 1 or > 327)
+    {
+      UI.MessageBox.Show(this, "'Ticks Per Second' must be in the range [1,327].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
       return false;
     }
 
@@ -91,17 +97,17 @@ public partial class MainWindow : Window
     {
       UI.MessageBox.Show(this, "'Force PC' must be in the range [0,127].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
       return false;
-    }
+    }    
 
     if (UI.MessageBox.Show(this, "We are ready. Click 'OK' to start conversion.", "Start Conversion?", MessageBoxButton.OKCancel, MessageBoxImage.Question) is not MessageBoxResult.OK)
     {
       return false;
     }
 
+    new M2NCore(config).StartConversion();
+
     try
     {
-      Midi2Nbs.Midi2Nbs.Start(config);
-
       // Text of UI.MessageBox would dispear sometimes without Thread.Sleep
       Thread.Sleep(100);      
 

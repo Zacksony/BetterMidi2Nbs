@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace Midi2Nbs;
 
-public class ExecuteOnExit : IDisposable
+public class ExecuteOnExit(params IEnumerable<Action> actions) : IDisposable
 {
-  public List<Action> Actions { get; } = [];
+  public List<Action> Actions { get; } = [.. actions];
 
   void IDisposable.Dispose()
   {
