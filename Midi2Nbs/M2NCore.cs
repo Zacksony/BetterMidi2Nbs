@@ -193,11 +193,14 @@ public sealed class M2NCore(M2NConfig config)
       long maxTime = midiNotesByTime.Keys.Max();
 
       int currentGroupId = 0;
-      int currentTimePerBar = int.Max(1, (int)double.Round(midiFile.DeltaTicksPerQuarterNote * 4 * config.VisualAlignBarlines));
+      int currentTimePerBar = int.Max(1, (int)double.Round(midiFile.DeltaTicksPerQuarterNote * 4d * config.VisualAlignBarlines));
 
       for (long time = 0; time <= maxTime; time += currentTimePerBar)
       {
-        currentTimePerBar = int.Max(1, (int)double.Round(timePerBarChanges.GetValueOrDefault(time, currentTimePerBar) * config.VisualAlignBarlines));
+        if (timePerBarChanges.TryGetValue(time, out int changedTimePerBar))
+        {
+          currentTimePerBar = int.Max(1, (int)double.Round(changedTimePerBar * config.VisualAlignBarlines));
+        }
 
         for (int j = 0; j < currentTimePerBar; j++)
         {
