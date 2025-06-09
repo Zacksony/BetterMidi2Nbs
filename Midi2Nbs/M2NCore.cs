@@ -246,9 +246,6 @@ public sealed class M2NCore(M2NConfig config)
       }
     }
 
-    int count1 = layeredNbsNotesByTick.Sum(x => x.Value.Count);
-    int count2 = nbsNotesByTime.Sum(x => x.Value.Count);
-
     // cleanup
 
     midiFile = null!;
@@ -267,7 +264,7 @@ public sealed class M2NCore(M2NConfig config)
     int songStartTick = timeToTickMap.GetValueOrDefault(songStartTime, 0);
     int songLoopTick = timeToTickMap.GetValueOrDefault(songLoopTime, -1);
     int maxNbsTick = layeredNbsNotesByTick.Keys.Max();
-    short layerCount = (short)layeredNbsNotesByTick.SelectMany(x => x.Value).Select(x => x.Key).Max();
+    short layerCount = (short)(layeredNbsNotesByTick.SelectMany(x => x.Value).Select(x => x.Key).Max() + 1);
 
     writer.Write((byte[])[0x00, 0x00, 0x05, 0x10]);
     writer.Write((short)int.Clamp(maxNbsTick - songStartTick + 1, 0, 32767)); // Song length
