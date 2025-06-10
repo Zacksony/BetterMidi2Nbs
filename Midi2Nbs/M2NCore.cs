@@ -5,6 +5,7 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -12,124 +13,185 @@ namespace Midi2Nbs;
 
 public sealed class M2NCore(M2NConfig config)
 {
-  private Task? _runningTask = null;
+  private M2NProgress _progress = new();
+  private FrequencyLimitedExection _frequencyLimited = new(TimeSpan.FromMilliseconds(20));
+
+  public M2NStatus Status => _progress.Status;
+
+  public double TotalPercentage => _progress.TotalPercentage;
+
+  public string Message => _progress.Message;
+
+  public event Action? ProgressChanged
+  {
+    add
+    {
+      _progress.ProgressChanged -= value;
+      _progress.ProgressChanged += value;
+    }
+    remove
+    {
+      _progress.ProgressChanged -= value;
+    }
+  }
 
   public void StartConversion()
   {
-    Convert();
+    Task.Run(() =>
+    {
+      try
+      {
+        Convert();
+
+        _progress.Set(M2NStatus.Cleanup, 0);
+        Thread.Sleep(300);
+        ForceGC();
+
+        _progress.Set(M2NStatus.Finish);
+      }
+      catch (Exception e)
+      {
+        _progress.Set(M2NStatus.Error, message: e.ToString());
+      }
+    });   
   }
 
   private void Convert()
   {
-    MidiFile midiFile = new(config.InputMidiPath, strictChecking: false);
+    _progress.Set(M2NStatus.LoadMidiFile, 0);
+    FileStream midiFileStream = File.OpenRead(config.InputMidiPath!);
+    bool isMidiFileLoaded = false;
+    MidiFile midiFile = null!;
+    Task.Run(() =>
+    {
+      midiFile = new(midiFileStream, strictChecking: false);
+      isMidiFileLoaded = true;
+      midiFileStream.Dispose();
+    });
+
+    while (!isMidiFileLoaded)
+    {
+      _frequencyLimited.Execute(() => _progress.Set(M2NStatus.LoadMidiFile, 100d * (double)midiFileStream.Position / (double)midiFileStream.Length));
+    }
 
     string songName = string.Empty;
     string songDesc = string.Empty;
     string songOriginalAuthor = string.Empty;
     string songAuthor = string.Empty;
 
-    // read conductor track
-
     long songStartTime = 0;
     long songLoopTime = -1;
-    SortedDictionary<long, int> timePerBarChanges = [];
-    SortedDictionary<long, decimal> ticksPerTimeChanges = [];
+    SortedDictionary<long, int> timePerBarChanges = []; 
+    SortedDictionary<long, decimal> ticksPerTimeChanges = []; 
 
     // read main tracks    
 
+    _progress.Set(M2NStatus.ReadNotesAndEvents, 0);
     SortedDictionary<long, HashSet<MidiNote>> midiNotesByTime = [];
-
-    foreach (var channel in
-      midiFile.Events.SelectMany((events, trackIndex) => events.Select((e) => (Event: e, TrackIndex: trackIndex)))
-                     .GroupBy(x => x.Event.Channel))
     {
-      ChannelState channelState = new(inst: config.StartingPatch);
+      long totalMidiEventCount = midiFile.Events.SelectMany(x => x)
+                                                .Where(x => x.CommandCode is MidiCommandCode.NoteOn
+                                                                          or MidiCommandCode.ControlChange
+                                                                          or MidiCommandCode.PatchChange
+                                                                          or MidiCommandCode.MetaEvent)
+                                                .LongCount();
+      long currentMidiEventIndex = 0;
 
-      foreach (var (midiEvent, trackIndex) in
-        channel.Where(x => x.Event.CommandCode is MidiCommandCode.NoteOn
-                                               or MidiCommandCode.ControlChange
-                                               or MidiCommandCode.PatchChange
-                                               or MidiCommandCode.MetaEvent)
-               .OrderBy(x => x.Event.AbsoluteTime)
-               .GroupBy(x => x.Event.AbsoluteTime)
-               .Select(x => x.OrderBy(e => e.Event, MidiEventComparer.Instance))
-               .SelectMany(x => x))
+      foreach (var channel in
+        midiFile.Events.SelectMany((events, trackIndex) => events.Select((e) => (Event: e, TrackIndex: trackIndex)))
+                       .GroupBy(x => x.Event.Channel))
       {
-        if (midiEvent is null)
+        ChannelState channelState = new(inst: config.StartingPatch);
+
+        foreach (var (midiEvent, trackIndex) in
+          channel.Where(x => x.Event.CommandCode is MidiCommandCode.NoteOn
+                                                 or MidiCommandCode.ControlChange
+                                                 or MidiCommandCode.PatchChange
+                                                 or MidiCommandCode.MetaEvent)
+                 .OrderBy(x => x.Event.AbsoluteTime)
+                 .GroupBy(x => x.Event.AbsoluteTime)
+                 .Select(x => x.OrderBy(e => e.Event, MidiEventComparer.Instance))
+                 .SelectMany(x => x))
         {
-          continue;
-        }
-        else if (midiEvent is TextEvent textEvent)
-        {
-          if (textEvent.Text == config.SongStartMarkerEventText)
-          {
-            songStartTime = midiEvent.AbsoluteTime;
-          }
-          else if (textEvent.Text == config.LoopMarkerEventText)
-          {
-            songLoopTime = midiEvent.AbsoluteTime;
-          }
-          else if (textEvent.Text.StartsWith(config.SongNameEventHeader))
-          {
-            songName = textEvent.Text.Replace(config.SongNameEventHeader, null);
-          }
-          else if (textEvent.Text.StartsWith(config.SongDescEventHeader))
-          {
-            songDesc = textEvent.Text.Replace(config.SongDescEventHeader, null);
-          }
-          else if (textEvent.Text.StartsWith(config.OriginalAuthorEventHeader))
-          {
-            songOriginalAuthor = textEvent.Text.Replace(config.OriginalAuthorEventHeader, null);
-          }
-          else if (textEvent.Text.StartsWith(config.SongAuthorEventHeader))
-          {
-            songAuthor = textEvent.Text.Replace(config.SongAuthorEventHeader, null);
-          }
-        }
-        else if (midiEvent is TimeSignatureEvent timeSignatureEvent)
-        {
-          timePerBarChanges[midiEvent.AbsoluteTime] = (int)(4 / double.Pow(2, timeSignatureEvent.Denominator) * timeSignatureEvent.Numerator) * midiFile.DeltaTicksPerQuarterNote;
-        }
-        else if (midiEvent is TempoEvent tempoEvent)
-        {
-          ticksPerTimeChanges[midiEvent.AbsoluteTime] = (decimal)config.NbsTPS * tempoEvent.MicrosecondsPerQuarterNote / ((decimal)1_000_000 * midiFile.DeltaTicksPerQuarterNote);
-        }
-        else if (config.EnablePanpot && midiEvent is ControlChangeEvent { Controller: MidiController.Pan } cc)
-        {
-          channelState.Pan = cc.ControllerValue;
-        }
-        else if (!config.DoForcePatch && config.EnableProgramChange && midiEvent is PatchChangeEvent pc)
-        {
-          channelState.Inst = pc.Patch;
-        }
-        else if (midiEvent is NoteOnEvent noteOn)
-        {
-          if (noteOn.Velocity < config.MinMidiVelocity)
+          currentMidiEventIndex++;
+          _frequencyLimited.Execute(() => _progress.Set(M2NStatus.ReadNotesAndEvents, 100d * (double)currentMidiEventIndex / (double)totalMidiEventCount));
+
+          if (midiEvent is null)
           {
             continue;
           }
-
-          sbyte outputInst = (sbyte)(config.DoForcePatch ? config.ForcePatch : channelState.Inst);
-          sbyte outputKey = (sbyte)noteOn.NoteNumber;
-          sbyte outputVel = (sbyte)(config.DoForceVelocity ? config.ForceMidiVelocity : noteOn.Velocity);
-
-          if (config.BetterLowerRegisterOfPiano && outputInst == 0 && outputKey <= 42)
+          else if (midiEvent is TextEvent textEvent)
           {
-            outputInst = 1;
-            outputKey += 12;
+            if (textEvent.Text == config.SongStartMarkerEventText)
+            {
+              songStartTime = midiEvent.AbsoluteTime;
+            }
+            else if (textEvent.Text == config.LoopMarkerEventText)
+            {
+              songLoopTime = midiEvent.AbsoluteTime;
+            }
+            else if (textEvent.Text.StartsWith(config.SongNameEventHeader))
+            {
+              songName = textEvent.Text.Replace(config.SongNameEventHeader, null);
+            }
+            else if (textEvent.Text.StartsWith(config.SongDescEventHeader))
+            {
+              songDesc = textEvent.Text.Replace(config.SongDescEventHeader, null);
+            }
+            else if (textEvent.Text.StartsWith(config.OriginalAuthorEventHeader))
+            {
+              songOriginalAuthor = textEvent.Text.Replace(config.OriginalAuthorEventHeader, null);
+            }
+            else if (textEvent.Text.StartsWith(config.SongAuthorEventHeader))
+            {
+              songAuthor = textEvent.Text.Replace(config.SongAuthorEventHeader, null);
+            }
           }
-          
-          MidiNote midiNote =
-            new(outputInst,
-                outputKey,
-                outputVel,
-                channelState.Pan,
-                trackIndex);
+          else if (midiEvent is TimeSignatureEvent timeSignatureEvent)
+          {
+            timePerBarChanges[midiEvent.AbsoluteTime] = (int)(4 / double.Pow(2, timeSignatureEvent.Denominator) * timeSignatureEvent.Numerator) * midiFile.DeltaTicksPerQuarterNote;
+          }
+          else if (midiEvent is TempoEvent tempoEvent)
+          {
+            ticksPerTimeChanges[midiEvent.AbsoluteTime] = (decimal)config.NbsTPS * tempoEvent.MicrosecondsPerQuarterNote / ((decimal)1_000_000 * midiFile.DeltaTicksPerQuarterNote);
+          }
+          else if (config.EnablePanpot && midiEvent is ControlChangeEvent { Controller: MidiController.Pan } cc)
+          {
+            channelState.Pan = cc.ControllerValue;
+          }
+          else if (!config.DoForcePatch && config.EnableProgramChange && midiEvent is PatchChangeEvent pc)
+          {
+            channelState.Inst = pc.Patch;
+          }
+          else if (midiEvent is NoteOnEvent noteOn)
+          {
+            if (noteOn.Velocity < config.MinMidiVelocity)
+            {
+              continue;
+            }
 
-          midiNotesByTime.GetOrAdd(midiEvent.AbsoluteTime, key => new(MidiNoteAvoidDuplicatedEqualityComparer.Instance)).Add(midiNote);
+            sbyte outputInst = (sbyte)(config.DoForcePatch ? config.ForcePatch : channelState.Inst);
+            sbyte outputKey = (sbyte)noteOn.NoteNumber;
+            sbyte outputVel = (sbyte)(config.DoForceVelocity ? config.ForceMidiVelocity : noteOn.Velocity);
+
+            if (config.BetterLowerRegisterOfPiano && outputInst == 0 && outputKey <= 42)
+            {
+              outputInst = 1;
+              outputKey += 12;
+            }
+
+            MidiNote midiNote =
+              new(outputInst,
+                  outputKey,
+                  outputVel,
+                  channelState.Pan,
+                  trackIndex);
+
+            midiNotesByTime.GetOrAdd(midiEvent.AbsoluteTime, key => new(MidiNoteAvoidDuplicatedEqualityComparer.Instance)).Add(midiNote);
+          }
         }
       }
-    }
+    }   
 
     // convert midi time to nbs tick
 
@@ -162,9 +224,12 @@ public sealed class M2NCore(M2NConfig config)
 
     // convert midi notes to nbs notes
 
+    _progress.Set(M2NStatus.ConvertMidiNotesToNbsNotes, 0);
     SortedDictionary<long, HashSet<NbsNote>> nbsNotesByTime = [];
     {
-      foreach (var (time, midiNote) in midiNotesByTime.SelectMany(x => x.Value.Select(y => (x.Key, y))))
+      int totalNoteCount = midiNotesByTime.Select(x => x.Value.Count).Sum();
+
+      foreach (var (index, (time, midiNote)) in midiNotesByTime.SelectMany(x => x.Value.Select(y => (x.Key, y))).Index())
       {
         if (midiNote.Key is < 21 or > 108)
         {
@@ -183,6 +248,8 @@ public sealed class M2NCore(M2NConfig config)
                 midiNote.Track);
 
         nbsNotesByTime.GetOrAdd(time, key => []).Add(nbsNote);
+
+        _frequencyLimited.Execute(() => _progress.Set(M2NStatus.ConvertMidiNotesToNbsNotes, 100d * (double)(index + 1) / (double)totalNoteCount));
       }
     }
 
@@ -213,8 +280,12 @@ public sealed class M2NCore(M2NConfig config)
 
     // group & sort nbs notes
 
-    SortedDictionary<int, SortedDictionary<int, NbsNote>> layeredNbsNotesByTick = [];
+    _progress.Set(M2NStatus.GroupAndSortNotes, 0);
+    SortedDictionary<int, SortedDictionary<int, NbsNote>> layeredNbsNotesByTick = [];    
     {
+      int totalNoteCount = nbsNotesByTime.Select(x => x.Value.Count).Sum();
+      int currentNoteCount = 0;
+
       foreach (var nbsNotesAligned in nbsNotesByTime.GroupBy(x => groupIdsByTime[x.Key]))
       {
         int startingLayerIndex = 0;
@@ -241,6 +312,9 @@ public sealed class M2NCore(M2NConfig config)
             {
               layeredNbsNotesByTick.GetOrAdd(tick, key => [])[startingLayerIndex + indexInThisLayer] = nbsNote;
               maxIndexInThisLayer = indexInThisLayer > maxIndexInThisLayer ? indexInThisLayer : maxIndexInThisLayer;
+
+              currentNoteCount++;
+              _frequencyLimited.Execute(() => _progress.Set(M2NStatus.GroupAndSortNotes, 100d * (double)currentNoteCount / (double)totalNoteCount));
             }
           }
 
@@ -249,17 +323,9 @@ public sealed class M2NCore(M2NConfig config)
       }
     }
 
-    // cleanup
-
-    midiFile = null!;
-    midiNotesByTime = null!;
-    timePerBarChanges = null!;
-    ticksPerTimeChanges = null!;
-    groupIdsByTime = null!;
-    nbsNotesByTime = null!;
-    ForceGC();
-
     // write nbs header
+
+    _progress.Set(M2NStatus.WriteNbsFile, 0);
 
     using FileStream fstream = File.Create(config.LetUserSelectNbsSavePath ? config.NbsSavePath! : config.AutoSelectedNbsSavePath!);
     using BinaryWriter writer = new(fstream);
@@ -306,6 +372,9 @@ public sealed class M2NCore(M2NConfig config)
     {
       short currentTick = -1;
 
+      int totalNoteCount = layeredNbsNotesByTick.Select(x => x.Value.Count).Sum();
+      int currentNoteCount = 0;
+
       foreach (var (tick, notes) in layeredNbsNotesByTick)
       {
         if (notes.Count == 0)
@@ -338,6 +407,9 @@ public sealed class M2NCore(M2NConfig config)
           writer.Write(note.Vel);
           writer.Write(note.Pan);
           writer.Write(note.Pitch);
+
+          currentNoteCount++;
+          _frequencyLimited.Execute(() => _progress.Set(M2NStatus.WriteNbsFile, 100d * (double)currentNoteCount / (double)totalNoteCount));
         }
 
         writer.Write((short)0);
@@ -358,13 +430,7 @@ public sealed class M2NCore(M2NConfig config)
       // write nbs custom instruments
 
       writer.Write((byte)0);
-    }
-
-    // cleanup
-
-    timeToTickMap = null!;
-    layeredNbsNotesByTick = null!;
-    ForceGC();
+    }    
   }
 
   #region statics
@@ -401,7 +467,7 @@ public sealed class M2NCore(M2NConfig config)
     GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
     GC.WaitForPendingFinalizers();
     GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
-  }
+  }  
 
   #endregion
 

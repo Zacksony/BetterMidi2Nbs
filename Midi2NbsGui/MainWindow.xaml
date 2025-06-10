@@ -7,11 +7,11 @@
     xmlns:local="clr-namespace:Midi2NbsGui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.inkore.net/lib/ui/wpf/modern"
-    Title="BetterMidi2Nbs v1.3"
+    Title="BetterMidi2Nbs v1.4"
     Width="880"
     Height="580"
-    MinWidth="512"
-    MinHeight="240"
+    MinWidth="540"
+    MinHeight="300"
     d:DataContext="{d:DesignInstance Type=local:MainViewModel}"
     ui:WindowHelper.SystemBackdropType="Mica"
     ui:WindowHelper.UseModernWindowStyle="True"
@@ -29,6 +29,7 @@
             FalseValue="Collapsed"
             TrueValue="Visible" />
         <conv:StringIsNotNullOrEmptyConverter x:Key="StringIsNotNullOrEmptyConverter" />
+        <local:IfElseConverter x:Key="IfElseConverter" />
         <local:AndOperationConverter x:Key="AndOperationConverter" />
         <local:ChainedConverter x:Key="AndOperationConverter_to_BoolToVisibilityConverter">
             <local:ChainedConverter.Converters>
@@ -111,549 +112,605 @@
     </Window.Resources>
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="64" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <StackPanel
-            Grid.Row="0"
-            Margin="20,12,20,12"
-            ui:PanelHelper.Spacing="8"
-            Orientation="Horizontal">
-            <Button
-                Padding="10,6"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Center"
-                VerticalContentAlignment="Center"
-                Command="{Binding StartConversionCommand}"
-                Foreground="#FFEEEEEE"
-                Style="{StaticResource Style.ButtonFlat.Rounded.MainButton}"
-                Visibility="Visible">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <local:FluentIcon
-                        Grid.Column="0"
-                        VerticalAlignment="Center"
-                        FontSize="14"
-                        IconId="{x:Static local:FluentIcons.PlayCircleSparkle16Regular}" />
-                    <TextBlock
-                        Grid.Column="1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        FontSize="14"
-                        Text="Start Conversion" />
-                </Grid>
-            </Button>
-            <Button
-                Padding="10,6"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Center"
-                VerticalContentAlignment="Center"
-                Command="{Binding RestoreConfigCommand}"
-                Foreground="#FFEEEEEE"
-                Style="{StaticResource Style.ButtonFlat.Rounded}"
-                Visibility="Visible">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <local:FluentIcon
-                        Grid.Column="0"
-                        VerticalAlignment="Center"
-                        FontSize="14"
-                        IconId="{x:Static local:FluentIcons.Delete16Regular}" />
-                    <TextBlock
-                        Grid.Column="1"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
-                        FontSize="14"
-                        Text="Restore Settings" />
-                </Grid>
-            </Button>
-        </StackPanel>
-        <ui:ScrollViewerEx
-            Grid.Row="1"
-            Padding="20,0">
+        <Grid x:Name="MainGrid">
+            <Grid.Background>
+                <MultiBinding Converter="{StaticResource IfElseConverter}">
+                    <Binding Path="IsRunning" />
+                    <Binding>
+                        <Binding.Source>
+                            <SolidColorBrush Color="#202020" />
+                        </Binding.Source>
+                    </Binding>
+                    <Binding>
+                        <Binding.Source>
+                            <SolidColorBrush Color="Transparent" />
+                        </Binding.Source>
+                    </Binding>
+                </MultiBinding>
+            </Grid.Background>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="64" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
             <StackPanel
-                Margin="0,10,0,20"
-                VerticalAlignment="Top"
-                Orientation="Vertical">
-                <!--  File  -->
-                <GroupBox
-                    Margin="0,0,0,10"
-                    FontWeight="Bold"
-                    Header="File">
-                    <Grid Margin="10">
+                Grid.Row="0"
+                Margin="20,12,20,12"
+                ui:PanelHelper.Spacing="8"
+                Orientation="Horizontal">
+                <Button
+                    Padding="10,6"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Command="{Binding StartConversionCommand}"
+                    Foreground="#FFEEEEEE"
+                    Style="{StaticResource Style.ButtonFlat.Rounded.MainButton}"
+                    Visibility="Visible">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+                        <local:FluentIcon
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            FontSize="14"
+                            IconId="{x:Static local:FluentIcons.PlayCircleSparkle16Regular}" />
                         <TextBlock
-                            Grid.Row="0"
-                            Grid.Column="0"
-                            Margin="0,0,10,0"
-                            HorizontalAlignment="Right"
+                            Grid.Column="1"
+                            Margin="8,0,0,0"
                             VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="MIDI Path:" />
-                        <Grid
-                            Grid.Row="0"
-                            Grid.Column="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox
-                                x:Name="MidiPathTextBox"
-                                Grid.Column="0"
-                                Margin="0,0,4,0"
-                                FontWeight="Normal"
-                                IsReadOnly="True"
-                                Text="{Binding Config.InputMidiPath, Mode=TwoWay}" />
-                            <ui:HyperlinkButton
-                                Grid.Column="1"
-                                Height="{Binding ElementName=MidiPathTextBox, Path=ActualHeight}"
-                                Command="{Binding BrowseMidiFileCommand}"
-                                Content="Browse..."
-                                FontWeight="Normal"
-                                RaiseHyperlinkClicks="False" />
-                        </Grid>
-                        <CheckBox
-                            Grid.Row="1"
-                            Grid.Column="0"
-                            Margin="0,10,10,0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            Content="NBS Save Path:"
-                            FontWeight="Normal"
-                            IsChecked="{Binding Config.LetUserSelectNbsSavePath}" />
-                        <Grid
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox
-                                x:Name="NbsSavePathTextBox"
-                                Grid.Column="0"
-                                Margin="0,0,4,0"
-                                FontWeight="Normal"
-                                IsEnabled="{Binding Config.LetUserSelectNbsSavePath}"
-                                IsReadOnly="True"
-                                Text="{Binding Config.NbsSavePath, Mode=TwoWay}" />
-                            <ui:HyperlinkButton
-                                Grid.Column="1"
-                                Height="{Binding ElementName=NbsSavePathTextBox, Path=ActualHeight}"
-                                Command="{Binding BrowseNbsSaveFileCommand}"
-                                Content="Browse..."
-                                FontWeight="Normal"
-                                IsEnabled="{Binding Config.LetUserSelectNbsSavePath}"
-                                RaiseHyperlinkClicks="False" />
-                        </Grid>
-                        <TextBlock
-                            Grid.Row="2"
-                            Grid.Column="1"
-                            Padding="4"
-                            VerticalAlignment="Center"
-                            FontSize="12"
-                            FontWeight="Normal"
-                            Foreground="#f8cf10"
-                            Text="{Binding Config.AutoSelectedNbsSavePath, StringFormat='Will be saved at {0}'}"
-                            TextWrapping="Wrap">
-                            <TextBlock.Visibility>
-                                <MultiBinding Converter="{StaticResource AndOperationConverter_to_BoolToVisibilityConverter}">
-                                    <Binding
-                                        Converter="{StaticResource BoolInverter}"
-                                        Path="Config.LetUserSelectNbsSavePath" />
-                                    <Binding
-                                        Converter="{StaticResource StringIsNotNullOrEmptyConverter}"
-                                        Path="Config.InputMidiPath" />
-                                </MultiBinding>
-                            </TextBlock.Visibility>
-                        </TextBlock>
+                            FontSize="14"
+                            Text="Start Conversion" />
                     </Grid>
-                </GroupBox>
-
-                <!--  Midi Load Config  -->
-                <GroupBox
-                    Margin="0,0,0,10"
-                    FontWeight="Bold"
-                    Header="MIDI Config">
-                    <Grid Margin="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <CheckBox
-                            Grid.Row="0"
-                            Grid.Column="0"
-                            Content="Convert To NBS Velocity"
-                            FontWeight="Normal"
-                            IsChecked="{Binding Config.DoCalculateVelocity}"
-                            ToolTip="Converts Midi velocity (exponential) to Nbs velocity (linear)."
-                            ToolTipService.InitialShowDelay="300" />
-                        <Grid
-                            Grid.Row="1"
-                            Grid.Column="0"
-                            Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="88" />
-                            </Grid.ColumnDefinitions>
-                            <CheckBox
-                                Grid.Column="0"
-                                Content="Force Midi Velocity:"
-                                FontWeight="Normal"
-                                IsChecked="{Binding Config.DoForceVelocity}" />
-                            <TextBox
-                                Grid.Column="1"
-                                Margin="10,0,0,0"
-                                FontWeight="Normal"
-                                IsEnabled="{Binding Config.DoForceVelocity}"
-                                PreviewTextInput="NumberOnly"
-                                Text="{Binding Config.ForceMidiVelocity, Mode=TwoWay}" />
-                        </Grid>
-
-                        <Grid
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="88" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                Grid.Column="0"
-                                Margin="0,0,10,0"
-                                VerticalAlignment="Center"
-                                FontSize="16"
-                                FontWeight="Normal"
-                                Text="Min Midi Velocity:" />
-                            <TextBox
-                                Grid.Column="1"
-                                FontWeight="Normal"
-                                PreviewTextInput="NumberOnly"
-                                Text="{Binding Config.MinMidiVelocity, Mode=TwoWay}" />
-                        </Grid>
-
-                        <CheckBox
-                            Grid.Row="2"
-                            Grid.Column="0"
-                            Margin="0,8,0,0"
-                            Content="Enable Panpot"
-                            FontWeight="Normal"
-                            IsChecked="{Binding Config.EnablePanpot}" />
-                        <CheckBox
-                            Grid.Row="2"
-                            Grid.Column="1"
-                            Margin="0,8,0,0"
-                            Content="Enable Program Change"
-                            FontWeight="Normal"
-                            IsChecked="{Binding Config.EnableProgramChange}" />
-
-                        <Grid
-                            Grid.Row="3"
-                            Grid.Column="0"
-                            Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="88" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                Grid.Column="0"
-                                Margin="0,0,10,0"
-                                VerticalAlignment="Center"
-                                FontSize="16"
-                                FontWeight="Normal"
-                                Text="Default PC:" />
-                            <TextBox
-                                Grid.Column="1"
-                                FontWeight="Normal"
-                                PreviewTextInput="NumberOnly"
-                                Text="{Binding Config.StartingPatch, Mode=TwoWay}" />
-                        </Grid>
-                        <Grid
-                            Grid.Row="3"
-                            Grid.Column="1"
-                            Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="88" />
-                            </Grid.ColumnDefinitions>
-                            <CheckBox
-                                Grid.Column="0"
-                                Content="Force PC:"
-                                FontWeight="Normal"
-                                IsChecked="{Binding Config.DoForcePatch}" />
-                            <TextBox
-                                Grid.Column="1"
-                                FontWeight="Normal"
-                                IsEnabled="{Binding Config.DoForcePatch}"
-                                PreviewTextInput="NumberOnly"
-                                Text="{Binding Config.ForcePatch, Mode=TwoWay}" />
-                        </Grid>
-                    </Grid>
-                </GroupBox>
-
-                <!--  Nbs Config  -->
-                <GroupBox
-                    Margin="0,0,0,10"
-                    FontWeight="Bold"
-                    Header="NBS Config">
-                    <Grid Margin="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <CheckBox
-                            Grid.Row="0"
-                            Grid.Column="0"
-                            Content="Better Lower Register Of Piano"
-                            FontWeight="Normal"
-                            IsChecked="{Binding Config.BetterLowerRegisterOfPiano}"
-                            ToolTip="Changes the instrument of Piano notes in the lower register (MIDI note number ≤ 42) to Bass."
-                            ToolTipService.InitialShowDelay="300" />
-                        <CheckBox
-                            Grid.Row="1"
-                            Grid.Column="0"
-                            Margin="0,8,0,0"
-                            Content="Caculate Tempo Changes"
-                            FontWeight="Normal"
-                            IsChecked="{Binding Config.DoConsiderTempoChange}" />
-                        <Grid
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="88" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                Grid.Column="0"
-                                Margin="0,0,10,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                FontSize="16"
-                                FontWeight="Normal"
-                                Text="Ticks Per Second:"
-                                ToolTip="a.k.a. Accuracy when tempo changes are enabled."
-                                ToolTipService.InitialShowDelay="300"
-                                Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource BoolToVisibilityConverter}}" />
-                            <TextBox
-                                Grid.Column="1"
-                                Width="88"
-                                HorizontalAlignment="Left"
-                                FontWeight="Normal"
-                                PreviewTextInput="NumberOnly"
-                                Text="{Binding Config.NbsTPS, Mode=TwoWay}"
-                                Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource BoolToVisibilityConverter}}" />
-                            <TextBlock
-                                Grid.Column="0"
-                                Margin="0,0,10,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                FontSize="16"
-                                FontWeight="Normal"
-                                Text="Ticks Per Quarter Note:"
-                                Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
-                            <TextBox
-                                Grid.Column="1"
-                                Width="88"
-                                HorizontalAlignment="Left"
-                                FontWeight="Normal"
-                                PreviewTextInput="NumberOnly"
-                                Text="{Binding Config.NbsTicksPerQuarterNote, Mode=TwoWay}"
-                                Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
-                        </Grid>
-                        <Grid
-                            Grid.Row="2"
-                            Grid.Column="0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="88" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                Grid.Column="0"
-                                Margin="0,8,10,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                FontSize="16"
-                                FontWeight="Normal"
-                                Text="Note Grouping Barlines:"
-                                ToolTip="Sets how many measures per group the notes should be arranged and exported with. Decimal values are allowed, but it's generally recommended to use regular numbers like 0.5, 1, or 2. Time signature change events are supported and will dynamically adjust the measure grouping. This value only affects visual presentation."
-                                ToolTipService.InitialShowDelay="300" />
-                            <TextBox
-                                Grid.Column="1"
-                                Width="88"
-                                Margin="0,8,0,0"
-                                HorizontalAlignment="Left"
-                                FontWeight="Normal"
-                                PreviewTextInput="DecimalOnly"
-                                Text="{Binding Config.VisualAlignBarlines, Mode=TwoWay}" />
-                        </Grid>
-                        <Grid
-                            Grid.Row="2"
-                            Grid.Column="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="138" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                Grid.Column="0"
-                                Margin="0,8,10,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                FontSize="16"
-                                FontWeight="Normal"
-                                Text="Layer Name Format:"
-                                ToolTip="Sets formatted layer name. {0} = Layer Index. For example, 'My Layer #{0}' will display as 'My Layer #0', 'My Layer #1', 'My Layer #2' etc.."
-                                ToolTipService.InitialShowDelay="300" />
-                            <TextBox
-                                Grid.Column="1"
-                                Margin="0,8,0,0"
-                                FontWeight="Normal"
-                                Text="{Binding Config.LayerNameFormat, Mode=TwoWay}" />
-                        </Grid>
-
-                    </Grid>
-                </GroupBox>
-
-                <!--  MIDI Meta Event Config  -->
-                <GroupBox
-                    FontWeight="Bold"
-                    Header="MIDI Meta Event Config">
-                    <Grid Margin="10">
+                </Button>
+                <Button
+                    Padding="10,6"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    Command="{Binding RestoreConfigCommand}"
+                    Foreground="#FFEEEEEE"
+                    Style="{StaticResource Style.ButtonFlat.Rounded}"
+                    Visibility="Visible">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <TextBlock
-                            Grid.Row="0"
+                        <local:FluentIcon
                             Grid.Column="0"
-                            Margin="0,0,16,0"
-                            HorizontalAlignment="Right"
                             VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="SongName TextEvent Header:" />
-                        <TextBox
-                            Grid.Row="0"
-                            Grid.Column="1"
-                            FontWeight="Normal"
-                            Text="{Binding Config.SongNameEventHeader, Mode=TwoWay}" />
+                            FontSize="14"
+                            IconId="{x:Static local:FluentIcons.Delete16Regular}" />
                         <TextBlock
-                            Grid.Row="1"
-                            Grid.Column="0"
-                            Margin="0,8,16,0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="SongDesc TextEvent Header:" />
-                        <TextBox
-                            Grid.Row="1"
                             Grid.Column="1"
-                            Margin="0,8,0,0"
-                            FontWeight="Normal"
-                            Text="{Binding Config.SongDescEventHeader, Mode=TwoWay}" />
-
-                        <TextBlock
-                            Grid.Row="2"
-                            Grid.Column="0"
-                            Margin="0,8,16,0"
-                            HorizontalAlignment="Right"
+                            Margin="8,0,0,0"
                             VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="OriginalAuthor TextEvent Header:" />
-                        <TextBox
-                            Grid.Row="2"
-                            Grid.Column="1"
-                            Margin="0,8,0,0"
-                            FontWeight="Normal"
-                            Text="{Binding Config.OriginalAuthorEventHeader, Mode=TwoWay}" />
-                        <TextBlock
-                            Grid.Row="3"
-                            Grid.Column="0"
-                            Margin="0,8,16,0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="SongAuthor TextEvent Header:" />
-                        <TextBox
-                            Grid.Row="3"
-                            Grid.Column="1"
-                            Margin="0,8,0,0"
-                            FontWeight="Normal"
-                            Text="{Binding Config.SongAuthorEventHeader, Mode=TwoWay}" />
-
-                        <TextBlock
-                            Grid.Row="4"
-                            Grid.Column="0"
-                            Margin="0,8,16,0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="Start Point TextEvent Text:" />
-                        <TextBox
-                            Grid.Row="4"
-                            Grid.Column="1"
-                            Margin="0,8,0,0"
-                            FontWeight="Normal"
-                            Text="{Binding Config.SongStartMarkerEventText, Mode=TwoWay}" />
-                        <TextBlock
-                            Grid.Row="5"
-                            Grid.Column="0"
-                            Margin="0,8,16,0"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center"
-                            FontSize="16"
-                            FontWeight="Normal"
-                            Text="Loop Point TextEvent Text:" />
-                        <TextBox
-                            Grid.Row="5"
-                            Grid.Column="1"
-                            Margin="0,8,0,0"
-                            FontWeight="Normal"
-                            Text="{Binding Config.LoopMarkerEventText, Mode=TwoWay}" />
+                            FontSize="14"
+                            Text="Restore Settings" />
                     </Grid>
-                </GroupBox>
+                </Button>
             </StackPanel>
-        </ui:ScrollViewerEx>
+            <ui:ScrollViewerEx
+                Grid.Row="1"
+                Padding="20,0">
+                <StackPanel
+                    Margin="0,10,0,20"
+                    VerticalAlignment="Top"
+                    Orientation="Vertical">
+                    <!--  File  -->
+                    <GroupBox
+                        Margin="0,0,0,10"
+                        FontWeight="Bold"
+                        Header="File">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Margin="0,0,10,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="MIDI Path:" />
+                            <Grid
+                                Grid.Row="0"
+                                Grid.Column="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox
+                                    x:Name="MidiPathTextBox"
+                                    Grid.Column="0"
+                                    Margin="0,0,4,0"
+                                    FontWeight="Normal"
+                                    IsReadOnly="True"
+                                    Text="{Binding Config.InputMidiPath, Mode=TwoWay}" />
+                                <ui:HyperlinkButton
+                                    Grid.Column="1"
+                                    Height="{Binding ElementName=MidiPathTextBox, Path=ActualHeight}"
+                                    Command="{Binding BrowseMidiFileCommand}"
+                                    Content="Browse..."
+                                    FontWeight="Normal"
+                                    RaiseHyperlinkClicks="False" />
+                            </Grid>
+                            <CheckBox
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                Margin="0,10,10,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Content="NBS Save Path:"
+                                FontWeight="Normal"
+                                IsChecked="{Binding Config.LetUserSelectNbsSavePath}" />
+                            <Grid
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox
+                                    x:Name="NbsSavePathTextBox"
+                                    Grid.Column="0"
+                                    Margin="0,0,4,0"
+                                    FontWeight="Normal"
+                                    IsEnabled="{Binding Config.LetUserSelectNbsSavePath}"
+                                    IsReadOnly="True"
+                                    Text="{Binding Config.NbsSavePath, Mode=TwoWay}" />
+                                <ui:HyperlinkButton
+                                    Grid.Column="1"
+                                    Height="{Binding ElementName=NbsSavePathTextBox, Path=ActualHeight}"
+                                    Command="{Binding BrowseNbsSaveFileCommand}"
+                                    Content="Browse..."
+                                    FontWeight="Normal"
+                                    IsEnabled="{Binding Config.LetUserSelectNbsSavePath}"
+                                    RaiseHyperlinkClicks="False" />
+                            </Grid>
+                            <TextBlock
+                                Grid.Row="2"
+                                Grid.Column="1"
+                                Padding="4"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                FontWeight="Normal"
+                                Foreground="#f8cf10"
+                                Text="{Binding Config.AutoSelectedNbsSavePath, StringFormat='Will be saved at {0}'}"
+                                TextWrapping="Wrap">
+                                <TextBlock.Visibility>
+                                    <MultiBinding Converter="{StaticResource AndOperationConverter_to_BoolToVisibilityConverter}">
+                                        <Binding
+                                            Converter="{StaticResource BoolInverter}"
+                                            Path="Config.LetUserSelectNbsSavePath" />
+                                        <Binding
+                                            Converter="{StaticResource StringIsNotNullOrEmptyConverter}"
+                                            Path="Config.InputMidiPath" />
+                                    </MultiBinding>
+                                </TextBlock.Visibility>
+                            </TextBlock>
+                        </Grid>
+                    </GroupBox>
+
+                    <!--  Midi Load Config  -->
+                    <GroupBox
+                        Margin="0,0,0,10"
+                        FontWeight="Bold"
+                        Header="MIDI Config">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <CheckBox
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Content="Convert To NBS Velocity"
+                                FontWeight="Normal"
+                                IsChecked="{Binding Config.DoCalculateVelocity}"
+                                ToolTip="Converts Midi velocity (exponential) to Nbs velocity (linear)."
+                                ToolTipService.InitialShowDelay="300" />
+                            <Grid
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="88" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox
+                                    Grid.Column="0"
+                                    Content="Force Midi Velocity:"
+                                    FontWeight="Normal"
+                                    IsChecked="{Binding Config.DoForceVelocity}" />
+                                <TextBox
+                                    Grid.Column="1"
+                                    Margin="10,0,0,0"
+                                    FontWeight="Normal"
+                                    IsEnabled="{Binding Config.DoForceVelocity}"
+                                    PreviewTextInput="NumberOnly"
+                                    Text="{Binding Config.ForceMidiVelocity, Mode=TwoWay}" />
+                            </Grid>
+
+                            <Grid
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="88" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Normal"
+                                    Text="Min Midi Velocity:" />
+                                <TextBox
+                                    Grid.Column="1"
+                                    FontWeight="Normal"
+                                    PreviewTextInput="NumberOnly"
+                                    Text="{Binding Config.MinMidiVelocity, Mode=TwoWay}" />
+                            </Grid>
+
+                            <CheckBox
+                                Grid.Row="2"
+                                Grid.Column="0"
+                                Margin="0,8,0,0"
+                                Content="Enable Panpot"
+                                FontWeight="Normal"
+                                IsChecked="{Binding Config.EnablePanpot}" />
+                            <CheckBox
+                                Grid.Row="2"
+                                Grid.Column="1"
+                                Margin="0,8,0,0"
+                                Content="Enable Program Change"
+                                FontWeight="Normal"
+                                IsChecked="{Binding Config.EnableProgramChange}" />
+
+                            <Grid
+                                Grid.Row="3"
+                                Grid.Column="0"
+                                Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="88" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Normal"
+                                    Text="Default PC:" />
+                                <TextBox
+                                    Grid.Column="1"
+                                    FontWeight="Normal"
+                                    PreviewTextInput="NumberOnly"
+                                    Text="{Binding Config.StartingPatch, Mode=TwoWay}" />
+                            </Grid>
+                            <Grid
+                                Grid.Row="3"
+                                Grid.Column="1"
+                                Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="88" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox
+                                    Grid.Column="0"
+                                    Content="Force PC:"
+                                    FontWeight="Normal"
+                                    IsChecked="{Binding Config.DoForcePatch}" />
+                                <TextBox
+                                    Grid.Column="1"
+                                    FontWeight="Normal"
+                                    IsEnabled="{Binding Config.DoForcePatch}"
+                                    PreviewTextInput="NumberOnly"
+                                    Text="{Binding Config.ForcePatch, Mode=TwoWay}" />
+                            </Grid>
+                        </Grid>
+                    </GroupBox>
+
+                    <!--  Nbs Config  -->
+                    <GroupBox
+                        Margin="0,0,0,10"
+                        FontWeight="Bold"
+                        Header="NBS Config">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <CheckBox
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Content="Better Lower Register Of Piano"
+                                FontWeight="Normal"
+                                IsChecked="{Binding Config.BetterLowerRegisterOfPiano}"
+                                ToolTip="Changes the instrument of Piano notes in the lower register (MIDI note number ≤ 42) to Bass."
+                                ToolTipService.InitialShowDelay="300" />
+                            <CheckBox
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                Margin="0,8,0,0"
+                                Content="Caculate Tempo Changes"
+                                FontWeight="Normal"
+                                IsChecked="{Binding Config.DoConsiderTempoChange}" />
+                            <Grid
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="88" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Margin="0,0,10,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Normal"
+                                    Text="Ticks Per Second:"
+                                    ToolTip="a.k.a. Accuracy when tempo changes are enabled."
+                                    ToolTipService.InitialShowDelay="300"
+                                    Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                <TextBox
+                                    Grid.Column="1"
+                                    Width="88"
+                                    HorizontalAlignment="Left"
+                                    FontWeight="Normal"
+                                    PreviewTextInput="NumberOnly"
+                                    Text="{Binding Config.NbsTPS, Mode=TwoWay}"
+                                    Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Margin="0,0,10,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Normal"
+                                    Text="Ticks Per Quarter Note:"
+                                    Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                                <TextBox
+                                    Grid.Column="1"
+                                    Width="88"
+                                    HorizontalAlignment="Left"
+                                    FontWeight="Normal"
+                                    PreviewTextInput="NumberOnly"
+                                    Text="{Binding Config.NbsTicksPerQuarterNote, Mode=TwoWay}"
+                                    Visibility="{Binding Config.DoConsiderTempoChange, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                            </Grid>
+                            <Grid
+                                Grid.Row="2"
+                                Grid.Column="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="88" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Margin="0,8,10,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Normal"
+                                    Text="Note Grouping Barlines:"
+                                    ToolTip="Sets how many measures per group the notes should be arranged and exported with. Decimal values are allowed, but it's generally recommended to use regular numbers like 0.5, 1, or 2. Time signature change events are supported and will dynamically adjust the measure grouping. This value only affects visual presentation."
+                                    ToolTipService.InitialShowDelay="300" />
+                                <TextBox
+                                    Grid.Column="1"
+                                    Width="88"
+                                    Margin="0,8,0,0"
+                                    HorizontalAlignment="Left"
+                                    FontWeight="Normal"
+                                    PreviewTextInput="DecimalOnly"
+                                    Text="{Binding Config.VisualAlignBarlines, Mode=TwoWay}" />
+                            </Grid>
+                            <Grid
+                                Grid.Row="2"
+                                Grid.Column="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="138" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Margin="0,8,10,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Normal"
+                                    Text="Layer Name Format:"
+                                    ToolTip="Sets formatted layer name. {0} = Layer Index. For example, 'My Layer #{0}' will display as 'My Layer #0', 'My Layer #1', 'My Layer #2' etc.."
+                                    ToolTipService.InitialShowDelay="300" />
+                                <TextBox
+                                    Grid.Column="1"
+                                    Margin="0,8,0,0"
+                                    FontWeight="Normal"
+                                    Text="{Binding Config.LayerNameFormat, Mode=TwoWay}" />
+                            </Grid>
+
+                        </Grid>
+                    </GroupBox>
+
+                    <!--  MIDI Meta Event Config  -->
+                    <GroupBox
+                        FontWeight="Bold"
+                        Header="MIDI Meta Event Config">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock
+                                Grid.Row="0"
+                                Grid.Column="0"
+                                Margin="0,0,16,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="SongName TextEvent Header:" />
+                            <TextBox
+                                Grid.Row="0"
+                                Grid.Column="1"
+                                FontWeight="Normal"
+                                Text="{Binding Config.SongNameEventHeader, Mode=TwoWay}" />
+                            <TextBlock
+                                Grid.Row="1"
+                                Grid.Column="0"
+                                Margin="0,8,16,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="SongDesc TextEvent Header:" />
+                            <TextBox
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Margin="0,8,0,0"
+                                FontWeight="Normal"
+                                Text="{Binding Config.SongDescEventHeader, Mode=TwoWay}" />
+
+                            <TextBlock
+                                Grid.Row="2"
+                                Grid.Column="0"
+                                Margin="0,8,16,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="OriginalAuthor TextEvent Header:" />
+                            <TextBox
+                                Grid.Row="2"
+                                Grid.Column="1"
+                                Margin="0,8,0,0"
+                                FontWeight="Normal"
+                                Text="{Binding Config.OriginalAuthorEventHeader, Mode=TwoWay}" />
+                            <TextBlock
+                                Grid.Row="3"
+                                Grid.Column="0"
+                                Margin="0,8,16,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="SongAuthor TextEvent Header:" />
+                            <TextBox
+                                Grid.Row="3"
+                                Grid.Column="1"
+                                Margin="0,8,0,0"
+                                FontWeight="Normal"
+                                Text="{Binding Config.SongAuthorEventHeader, Mode=TwoWay}" />
+
+                            <TextBlock
+                                Grid.Row="4"
+                                Grid.Column="0"
+                                Margin="0,8,16,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="Start Point TextEvent Text:" />
+                            <TextBox
+                                Grid.Row="4"
+                                Grid.Column="1"
+                                Margin="0,8,0,0"
+                                FontWeight="Normal"
+                                Text="{Binding Config.SongStartMarkerEventText, Mode=TwoWay}" />
+                            <TextBlock
+                                Grid.Row="5"
+                                Grid.Column="0"
+                                Margin="0,8,16,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="Normal"
+                                Text="Loop Point TextEvent Text:" />
+                            <TextBox
+                                Grid.Row="5"
+                                Grid.Column="1"
+                                Margin="0,8,0,0"
+                                FontWeight="Normal"
+                                Text="{Binding Config.LoopMarkerEventText, Mode=TwoWay}" />
+                        </Grid>
+                    </GroupBox>
+                </StackPanel>
+            </ui:ScrollViewerEx>
+        </Grid>
+        <ui:AcrylicPanel
+            x:Name="ProcessScreen"
+            Target="{Binding ElementName=MainGrid}"
+            TintOpacity="0.1"
+            Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}" />
+        <Grid
+            IsHitTestVisible="True"
+            Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid
+                Grid.Row="1"
+                Margin="20,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock
+                    Grid.Row="0"
+                    Margin="0,0,0,8"
+                    HorizontalAlignment="Left"
+                    FontSize="15"
+                    Text="{Binding StatusMessage}" />
+                <TextBlock
+                    Grid.Row="0"
+                    Margin="0,0,0,8"
+                    HorizontalAlignment="Right"
+                    FontSize="15"
+                    Text="{Binding TotalPercentage, StringFormat={}{0:0} %}" />
+                <ProgressBar
+                    Grid.Row="1"
+                    Height="10"
+                    Foreground="White"
+                    Value="{Binding TotalPercentage}" />
+            </Grid>
+        </Grid>
     </Grid>
 </Window>

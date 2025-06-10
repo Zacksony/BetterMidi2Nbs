@@ -5,6 +5,7 @@ using Midi2Nbs;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Midi2NbsGui;
 
@@ -12,11 +13,24 @@ public partial class MainViewModel : ObservableObject
 {
   private const string ConfigFileName = "m2nconfig.json";
 
+  private M2NCore? _currentCore;
+
   [ObservableProperty]
   private M2NConfig config = new();
 
-  public event Func<M2NConfig, bool>? StartingConversion;
+  [ObservableProperty]
+  private double totalPercentage = 0;
+
+  [ObservableProperty]
+  private string statusMessage = string.Empty;
+
+  [ObservableProperty]
+  private bool isRunning = false;
+
+  public event Func<M2NConfig, M2NCore?>? StartingConversion;
   public event Func<bool>? AskRestoreConfig;
+  public event Action<string>? Error;
+  public event Action<string>? Info;
 
   public MainViewModel()
   {
@@ -62,7 +76,12 @@ public partial class MainViewModel : ObservableObject
   [RelayCommand]
   private void StartConversion()
   {
-    StartingConversion?.Invoke(Config);
+    if (StartingConversion?.Invoke(Config) is M2NCore core)
+    {
+      core.ProgressChanged += OnProgressChanged;
+      _currentCore = core;
+      IsRunning = true;
+    }
   }
 
   [RelayCommand]
@@ -90,8 +109,9 @@ public partial class MainViewModel : ObservableObject
         var json = File.ReadAllText(ConfigFileName);
         var loaded = JsonSerializer.Deserialize<M2NConfig>(json);
         if (loaded != null)
+        {
           Config = loaded;
-
+        }
         if (!File.Exists(Config.InputMidiPath))
         {
           Config.InputMidiPath = null;
@@ -102,9 +122,37 @@ public partial class MainViewModel : ObservableObject
         }
       }
       catch (Exception e)
-      { 
-        Debug.WriteLine($"Failed to read config json:\n{e}"); 
+      {
+        Debug.WriteLine($"Failed to read config json:\n{e}");
       }
+    }
+  }
+
+  private void OnProgressChanged()
+  {
+    if (_currentCore is null)
+    {
+      return;
+    }
+
+    TotalPercentage = _currentCore.TotalPercentage;
+    StatusMessage = _currentCore.Message;
+
+    if (_currentCore.Status == M2NStatus.Error)
+    {
+      Error?.Invoke(_currentCore.Message);
+
+      _currentCore.ProgressChanged -= OnProgressChanged;
+      _currentCore = null;
+      IsRunning = false;
+    }
+    else if (_currentCore.Status == M2NStatus.Finish)
+    {
+      Info?.Invoke(_currentCore.Message);
+
+      _currentCore.ProgressChanged -= OnProgressChanged;
+      _currentCore = null;
+      IsRunning = false;
     }
   }
 

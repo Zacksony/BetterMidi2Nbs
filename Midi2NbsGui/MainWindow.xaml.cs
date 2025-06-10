@@ -18,8 +18,12 @@ public partial class MainWindow : Window
   public MainWindow(MainViewModel viewModel)
   {
     DataContext = viewModel;
+
     viewModel.StartingConversion += OnStartingConversion;
     viewModel.AskRestoreConfig += OnAskRestoreConfig;
+    viewModel.Error += OnError;
+    viewModel.Info += OnInfo;
+
     InitializeComponent();
   }
 
@@ -38,14 +42,14 @@ public partial class MainWindow : Window
     }    
   }
 
-  private bool OnStartingConversion(M2NConfig config)
+  private M2NCore? OnStartingConversion(M2NConfig config)
   {
     UI.MessageBox.DefaultBackdropType = BackdropType.Mica;
 
     if (!File.Exists(config.InputMidiPath))
     {
       UI.MessageBox.Show(this, "Invalid midi path.", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
+      return null;
     }
 
     if (config.LetUserSelectNbsSavePath)
@@ -53,74 +57,78 @@ public partial class MainWindow : Window
       if (config.NbsSavePath is null || !Directory.Exists(Path.GetDirectoryName(config.NbsSavePath)))
       {
         UI.MessageBox.Show(this, "Invalid nbs save path.", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-        return false;
+        return null;
       }
     }
 
     if (!config.DoConsiderTempoChange && config.NbsTicksPerQuarterNote is < 1 or > 32767)
     {
       UI.MessageBox.Show(this, "'Ticks Per Quarter Note' must be in the range [1,32767]", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
+      return null;
     }
 
     if (config.DoConsiderTempoChange && config.NbsTPS is < 1 or > 327)
     {
       UI.MessageBox.Show(this, "'Ticks Per Second' must be in the range [1,327].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
+      return null;
     }
 
     if (config.VisualAlignBarlines is < 0 or > 32767)
     {
-      UI.MessageBox.Show(this, "'Note Grouping Align Barlines' must be in the range (0,32767].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
+      UI.MessageBox.Show(this, "'Note Grouping Barlines' must be in the range (0,32767].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
+      return null;
     }
 
     if (config.DoForceVelocity && config.ForceMidiVelocity is < 1 or > 127)
     {
       UI.MessageBox.Show(this, "'Force Midi Velocity' must be in the range [1,127].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
+      return null;
     }
 
     if (config.MinMidiVelocity is < 1 or > 127)
     {
       UI.MessageBox.Show(this, "'Min Midi Velocity' must be in the range [1,127].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
+      return null;
     }
 
     if (config.StartingPatch is < 0 or > 127)
     {
       UI.MessageBox.Show(this, "'Default PC' must be in the range [0,127].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
+      return null;
     }
 
     if (config.DoForcePatch && config.ForcePatch is < 0 or > 127)
     {
       UI.MessageBox.Show(this, "'Force PC' must be in the range [0,127].", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
+      return null;
     }    
 
     if (UI.MessageBox.Show(this, "We are ready. Click 'OK' to start conversion.", "Start Conversion?", MessageBoxButton.OKCancel, MessageBoxImage.Question) is not MessageBoxResult.OK)
     {
-      return false;
+      return null;
     }
 
-    new M2NCore(config).StartConversion();
+    M2NCore core = new(config);
+    core.StartConversion();
+    return core;
+  }
 
-    try
-    {
-      // Text of UI.MessageBox would dispear sometimes without Thread.Sleep
-      Thread.Sleep(100);      
-
-      UI.MessageBox.Show(this, "Conversion Successful!", "Congratulations", MessageBoxButton.OK, MessageBoxImage.Information);
-      return true;
-    }
-    catch (Exception e)
+  private void OnError(string message)
+  {
+    Dispatcher.Invoke(() =>
     {
       // Can't use UI.MessageBox here,
       // causes visual issue
-      System.Windows.MessageBox.Show(this, $"Conversion Failed. Message: {e}", "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
-      return false;
-    }
+      System.Windows.MessageBox.Show(this, message, "Error", MessageBoxButton.OK, MessageBoxImage.Hand);
+    });
+  }
+
+  private void OnInfo(string message)
+  {
+    Dispatcher.Invoke(() =>
+    {
+      UI.MessageBox.Show(this, message, "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+    });    
   }
 
   private bool OnAskRestoreConfig()
