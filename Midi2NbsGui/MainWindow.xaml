@@ -7,6 +7,7 @@
     xmlns:local="clr-namespace:Midi2NbsGui"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.inkore.net/lib/ui/wpf/modern"
+    x:Name="This"
     Title="BetterMidi2Nbs v1.4"
     Width="880"
     Height="580"
@@ -115,7 +116,9 @@
         <Grid x:Name="MainGrid">
             <Grid.Background>
                 <MultiBinding Converter="{StaticResource IfElseConverter}">
-                    <Binding Path="IsRunning" />
+                    <Binding
+                        ElementName="This"
+                        Path="ShowAcrylicPanel" />
                     <Binding>
                         <Binding.Source>
                             <SolidColorBrush Color="#202020" />
@@ -454,6 +457,48 @@
                                 IsChecked="{Binding Config.BetterLowerRegisterOfPiano}"
                                 ToolTip="Changes the instrument of Piano notes in the lower register (MIDI note number ≤ 42) to Bass."
                                 ToolTipService.InitialShowDelay="300" />
+                            <!--<Grid
+                                Grid.Row="0"
+                                Grid.Column="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    Margin="0,0,10,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Normal"
+                                    Text="Instrument Map:" />
+                                <Button
+                                    x:Name="InstrumentMapConfigButton"
+                                    Grid.Column="1"
+                                    Padding="13,6"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    VerticalContentAlignment="Center"
+                                    Click="InstrumentMapConfigButton_Click">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <local:FluentIcon
+                                            Grid.Column="0"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            IconId="{x:Static local:FluentIcons.EditSettings20Regular}" />
+                                        <TextBlock
+                                            Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Text="Config..." />
+                                    </Grid>
+                                </Button>
+                            </Grid>-->
                             <CheckBox
                                 Grid.Row="1"
                                 Grid.Column="0"
@@ -673,13 +718,15 @@
                 </StackPanel>
             </ui:ScrollViewerEx>
         </Grid>
+
         <ui:AcrylicPanel
-            x:Name="ProcessScreen"
             Target="{Binding ElementName=MainGrid}"
             TintOpacity="0.1"
-            Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}" />
+            Visibility="{Binding ElementName=This, Path=ShowAcrylicPanel, Converter={StaticResource BoolToVisibilityConverter}}" />
         <Grid
+            x:Name="ProgressScreenGrid"
             IsHitTestVisible="True"
+            IsVisibleChanged="ProgressScreenGrid_IsVisibleChanged"
             Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
@@ -698,19 +745,68 @@
                     Margin="0,0,0,8"
                     HorizontalAlignment="Left"
                     FontSize="15"
+                    Foreground="#C7FFFFFF"
                     Text="{Binding StatusMessage}" />
                 <TextBlock
                     Grid.Row="0"
                     Margin="0,0,0,8"
                     HorizontalAlignment="Right"
                     FontSize="15"
+                    Foreground="#C7FFFFFF"
                     Text="{Binding TotalPercentage, StringFormat={}{0:0} %}" />
                 <ProgressBar
                     Grid.Row="1"
                     Height="10"
-                    Foreground="White"
                     Value="{Binding TotalPercentage}" />
             </Grid>
+        </Grid>
+        <Grid
+            x:Name="InstConfigGrid"
+            IsHitTestVisible="True"
+            Visibility="{Binding ElementName=This, Path=ShowInstrumentMapConfig, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <StackPanel
+                Grid.Row="0"
+                Margin="24,20"
+                Orientation="Horizontal">
+                <Button
+                    x:Name="InstrumentMapConfigCloseButton"
+                    Padding="5,5"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Click="InstrumentMapConfigCloseButton_Click"
+                    Foreground="#FFEEEEEE"
+                    Style="{StaticResource Style.ButtonFlat.Rounded}"
+                    Visibility="Visible">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <local:FluentIcon
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            FontSize="20"
+                            IconId="{x:Static local:FluentIcons.ChevronLeft16Regular}" />
+                    </Grid>
+                </Button>
+                <TextBlock
+                    Margin="10,0,0,0"
+                    Padding="5,6"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    FontSize="20"
+                    FontWeight="Bold"
+                    Foreground="#C7FFFFFF"
+                    Text="Instrument Map Config" />
+            </StackPanel>
+            <ui:ScrollViewerEx
+                Grid.Row="1"
+                Padding="20,0">                
+            </ui:ScrollViewerEx>
         </Grid>
     </Grid>
 </Window>

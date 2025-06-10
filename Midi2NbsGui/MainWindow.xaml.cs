@@ -15,6 +15,27 @@ namespace Midi2NbsGui;
 /// </summary>
 public partial class MainWindow : Window
 {
+  public bool ShowInstrumentMapConfig
+  {
+    get { return (bool)GetValue(ShowInstrumentConfigProperty); }
+    set { SetValue(ShowInstrumentConfigProperty, value); }
+  }
+  
+  public static readonly DependencyProperty ShowInstrumentConfigProperty =
+    DependencyProperty.Register(nameof(ShowInstrumentMapConfig), typeof(bool), typeof(MainWindow), new PropertyMetadata(false, (d, e) =>
+    {
+      ((MainWindow)d).ShowAcrylicPanel = (bool)e.NewValue;
+    }));
+
+  public bool ShowAcrylicPanel
+  {
+    get { return (bool)GetValue(ShowAcrylicPanelProperty); }
+    set { SetValue(ShowAcrylicPanelProperty, value); }
+  }
+
+  public static readonly DependencyProperty ShowAcrylicPanelProperty =
+    DependencyProperty.Register(nameof(ShowAcrylicPanel), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+
   public MainWindow(MainViewModel viewModel)
   {
     DataContext = viewModel;
@@ -138,5 +159,20 @@ public partial class MainWindow : Window
       return true;
     }
     return false;
+  }
+
+  private void InstrumentMapConfigButton_Click(object sender, RoutedEventArgs e)
+  {
+    ShowInstrumentMapConfig = true;
+  }   
+
+  private void InstrumentMapConfigCloseButton_Click(object sender, RoutedEventArgs e)
+  {
+    ShowInstrumentMapConfig = false;
+  }
+
+  private void ProgressScreenGrid_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+  {
+    ShowAcrylicPanel = (bool)e.NewValue;
   }
 }

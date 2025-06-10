@@ -33,4 +33,19 @@ public class M2NConfig
   public int StartingPatch { get; set; } = 0;
   public bool DoForcePatch { get; set; } = false;
   public byte ForcePatch { get; set; } = 0;
+  public Dictionary<short, M2NInstrumentConfig> InstMap { get; set; } = []; // Midi Patch -> M2NInstrumentConfig
+}
+
+public class M2NInstrumentConfig
+{
+  public bool IsDrum { get; set; } = false;
+  public short NbsInstId { get; set; } = 0;
+  public short OctaveOffset { get; set; } = 0;
+  public Dictionary<short, M2NDrumConfig> DrumConfig { get; set; } = [];
+}
+
+public class M2NDrumConfig
+{
+  public short NbsInstId { get; set; } = 2;
+  public short NbsNoteNum { get; set; } = 33;
 }
